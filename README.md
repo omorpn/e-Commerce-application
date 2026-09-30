@@ -42,17 +42,18 @@ An ASP.NET Core 8 MVC marketplace. Customers buy physical products, book service
 
 ## Get a public link (free, no credit card)
 
-The app runs on [Render](https://render.com)'s free plan with a free PostgreSQL database from [Neon](https://neon.tech). Neither asks for a card. All data, including uploaded files and sign-in keys, lives in the database, so nothing is lost when the free service sleeps or restarts.
+The app runs on [Render](https://render.com)'s free plan. The Blueprint (`render.yaml`) creates the website **and** a free Render PostgreSQL database, and connects them. Neither needs a card. All data, including uploaded files and sign-in keys, lives in the database, so nothing is lost when the free service sleeps or restarts.
 
-1. **Create the database.** Sign up at [neon.tech](https://neon.tech) (GitHub or Google sign-in works) and create a project. On the dashboard click **Connect** and copy the connection string. It looks like
-   `postgresql://neondb_owner:xxxx@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
-2. **Deploy the app.** Click **Deploy to Render** above and sign in to Render with GitHub. When asked, fill in:
-   - `ConnectionStrings__Default`: the Neon connection string from step 1
+1. Click **Deploy to Render** above and sign in to Render (GitHub sign-in works).
+2. Fill in:
    - `Admin__Email`: the email you'll sign in with as admin
    - `Admin__Password`: 8+ characters with upper and lower case letters, a digit and a symbol, e.g. `MyShop#2026`
-3. Click **Apply**. After the first build (a few minutes) your store is live at `https://shopnest-XXXX.onrender.com`. Sign in with the admin details to open `/Admin`.
+3. Click **Apply**. Render creates the database and builds the app (about 5-10 minutes the first time). Your store is live at `https://shopnest-XXXX.onrender.com`; the address is at the top of the **shopnest** service page. Sign in with the admin details to open `/Admin`.
 
-Free plan limits: the service sleeps after 15 minutes without visitors and takes about a minute to wake on the next visit; Neon's free database holds 0.5 GB. Uploads are limited to 25 MB per file when stored in the database (`Storage__MaxFileMB` changes this, up to 100). Upgrading the Render plan removes the sleep; nothing else changes.
+Free plan limits:
+- The website sleeps after 15 minutes without visitors and takes about a minute to wake on the next visit.
+- **Render's free database expires 30 days after it's created.** Before then, either upgrade it in the Render dashboard, or create a free database elsewhere (e.g. [Neon](https://neon.tech) or [Supabase](https://supabase.com)), paste its connection string into the web service's `ConnectionStrings__Default` environment variable, and redeploy. Tables and sample data are created automatically; to keep existing data, copy it across with `pg_dump`/`pg_restore`.
+- Uploads are limited to 25 MB per file when stored in the database (`Storage__MaxFileMB` changes this, up to 100).
 
 The same Docker image runs on any container host (Railway, Fly.io, Azure App Service, a VPS). Point `ConnectionStrings__Default` at PostgreSQL, or leave the default to use SQLite under `/data` with a persistent volume mounted there. The app listens on `$PORT` when set, otherwise 8080.
 

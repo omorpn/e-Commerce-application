@@ -1,0 +1,66 @@
+@model List<Product>
+@{
+    ViewData["Title"] = "Store listings";
+    var type = ViewData["type"] as ProductType?;
+}
+<partial name="_AdminNav" />
+<div class="panel mt-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h4 mb-0">Store listings</h1>
+            <div class="small text-secondary">Products, services and downloads sold and fulfilled by ShopNest itself.</div>
+        </div>
+        <form method="get" class="d-flex gap-2">
+            <input name="q" value="@ViewData["q"]" class="form-control form-control-sm" placeholder="Search" />
+            <select name="type" class="form-select form-select-sm">
+                <option value="">All types</option>
+                @foreach (var t in Enum.GetValues<ProductType>())
+                {
+                    <option value="@t" selected="@(type == t)">@Catalog.Label(t)</option>
+                }
+            </select>
+            <button class="btn btn-light border btn-sm">Filter</button>
+        </form>
+        <div class="dropdown">
+            <button class="btn btn-buy btn-sm dropdown-toggle" data-bs-toggle="dropdown" type="button"><i class="bi bi-plus-lg"></i> Add listing</button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                @foreach (var t in Enum.GetValues<ProductType>())
+                {
+                    <li><a class="dropdown-item" asp-action="Create" asp-route-type="@t"><i class="bi @ViewHelpers.TypeIcon(t) me-2"></i>@Catalog.Label(t)</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th style="width:56px"></th><th>Name</th><th>Type</th><th>Category</th><th class="text-end">Price</th><th class="text-end">Stock</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+                @foreach (var p in Model)
+                {
+                    <tr>
+                        <td><div class="mini-cover"><partial name="_ProductImage" model="p" /></div></td>
+                        <td><a asp-area="" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">@p.Name</a><div class="small text-secondary">#@p.ProductCode</div></td>
+                        <td class="small"><i class="bi @ViewHelpers.TypeIcon(p.Type)"></i> @Catalog.Label(p.Type)</td>
+                        <td class="small">@p.Category</td>
+                        <td class="text-end">@ViewHelpers.Price(p.Price)@if (p.IsDeal) {<div class="small list-price">@ViewHelpers.Currency(p.ListPrice!.Value)</div>}</td>
+                        <td class="text-end @(p.IsPhysical && p.Stock <= 5 ? "text-danger fw-semibold" : "")">@(p.IsPhysical ? p.Stock.ToString() : "-")</td>
+                        <td><span class="badge @ViewHelpers.ListingBadge(p.Status)">@p.Status</span></td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-light border btn-sm" asp-action="Edit" asp-route-id="@p.ProductCode">Edit</a>
+                            <form asp-action="SetStatus" asp-route-id="@p.ProductCode" asp-route-publish="@(p.Status != ListingStatus.Published)" method="post" class="d-inline">
+                                <button class="btn btn-light border btn-sm" type="submit">@(p.Status == ListingStatus.Published ? "Hide" : "Publish")</button>
+                            </form>
+                            <form asp-action="Delete" asp-route-id="@p.ProductCode" method="post" class="d-inline" onsubmit="return confirm('Delete this listing?');">
+                                <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="8" class="text-secondary">No listings found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

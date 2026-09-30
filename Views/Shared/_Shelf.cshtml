@@ -1,0 +1,16 @@
+@model (string Title, string LinkText, string Link, List<ProductSummary> Items)
+@if (Model.Items.Count > 0)
+{
+    <section class="shelf">
+        <div class="shelf-head">
+            <h2 class="h4">@Model.Title</h2>
+            <a href="@Model.Link">@Model.LinkText</a>
+        </div>
+        <div class="product-grid">
+            @foreach (var item in Model.Items)
+            {
+                <partial name="_ProductCard" model="item" />
+            }
+        </div>
+    </section>
+}

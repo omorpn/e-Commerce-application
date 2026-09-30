@@ -1,0 +1,10 @@
+@model double
+@{
+    var rating = Math.Round(Model * 2, MidpointRounding.AwayFromZero) / 2;
+}
+<span class="stars" role="img" aria-label="@Model.ToString("0.0") out of 5 stars">
+    @for (var i = 1; i <= 5; i++)
+    {
+        <i class="bi @(rating >= i ? "bi-star-fill" : rating >= i - 0.5 ? "bi-star-half" : "bi-star")"></i>
+    }
+</span>

@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Local SQLite database and uploaded files (ebooks, covers, product images)
+*.db
+*.db-shm
+*.db-wal
+App_Data/

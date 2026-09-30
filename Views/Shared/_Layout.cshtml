@@ -1,0 +1,123 @@
+@inject CartService Cart
+@{
+    var cartCount = Context.Session.IsAvailable ? Cart.Count : 0;
+    var searchDept = Context.Request.Query["dept"].ToString();
+    var searchText = Context.Request.Query["q"].ToString();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is string t ? t + " | ShopNest" : "ShopNest: Shop & Self-Publish")</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%23131921'/><path d='M4 5h8l-1 6H5z' fill='%23febd69'/></svg>" />
+</head>
+<body>
+    <a class="visually-hidden-focusable skip-link" href="#main">Skip to content</a>
+    <header>
+        <nav class="topbar">
+            <div class="topbar-inner">
+                <a class="brand" asp-controller="Home" asp-action="Index">
+                    <i class="bi bi-bag-heart-fill"></i> Shop<span>Nest</span>
+                </a>
+
+                <form class="nav-search" asp-controller="Products" asp-action="Index" method="get" role="search">
+                    <select name="dept" class="form-select" aria-label="Department">
+                        <option value="all">All</option>
+                        <option value="products" selected="@(searchDept == "products")">Products</option>
+                        <option value="ebooks" selected="@(searchDept == "ebooks")">eBooks</option>
+                        <option value="digital" selected="@(searchDept == "digital")">Digital</option>
+                        <option value="services" selected="@(searchDept == "services")">Services</option>
+                        <option value="deals" selected="@(searchDept == "deals")">Deals</option>
+                    </select>
+                    <input type="search" name="q" value="@searchText" class="form-control" placeholder="Search products, services, downloads and ebooks" aria-label="Search" />
+                    <button class="btn btn-search" type="submit" aria-label="Search"><i class="bi bi-search"></i></button>
+                </form>
+
+                <div class="topbar-actions">
+                    <partial name="_LoginPartial" />
+                    <a class="nav-tile cart-link" asp-controller="Cart" asp-action="Index">
+                        <span class="cart-icon"><i class="bi bi-cart3"></i><span class="cart-count" data-testid="cart-count">@cartCount</span></span>
+                        <strong class="d-none d-sm-inline">Cart</strong>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        <nav class="subnav" aria-label="Departments">
+            <div class="subnav-inner">
+                <a asp-controller="Products" asp-action="Index"><i class="bi bi-list"></i> All</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="deals">Today's Deals</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products">Products</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="services">Services</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="digital">Digital Downloads</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="ebooks">eBook Store</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products" asp-route-category="Electronics">Electronics</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products" asp-route-category="Fashion">Fashion</a>
+                <a class="ms-md-auto highlight" asp-controller="Sell" asp-action="Index"><i class="bi bi-shop"></i> Sell on ShopNest</a>
+            </div>
+        </nav>
+    </header>
+
+    <main id="main" class="page">
+        <div class="container-xl">
+            @if (TempData["Success"] is string success)
+            {
+                <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+                    <i class="bi bi-check-circle-fill me-1"></i> @success
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> @error
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <a href="#main" class="back-to-top">Back to top</a>
+        <div class="footer-grid container-xl">
+            <div>
+                <h6>Shop</h6>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="deals">Today's Deals</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products">Products</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="services">Services</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="digital">Digital downloads</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="ebooks">eBook Store</a>
+            </div>
+            <div>
+                <h6>Make money with us</h6>
+                <a asp-controller="Sell" asp-action="Index">Sell products &amp; services</a>
+                <a asp-controller="Sell" asp-action="Create" asp-route-type="Ebook">Self-publish an ebook</a>
+                <a asp-controller="Sell" asp-action="Create" asp-route-type="Digital">Sell digital downloads</a>
+                <a asp-controller="Sell" asp-action="Orders">Seller orders</a>
+            </div>
+            <div>
+                <h6>Your account</h6>
+                <a asp-area="Identity" asp-page="/Account/Manage/Index">Account settings</a>
+                <a asp-controller="Orders" asp-action="Index">Your orders</a>
+                <a asp-controller="Library" asp-action="Index">Your library</a>
+                <a asp-controller="Wishlist" asp-action="Index">Your wish list</a>
+            </div>
+            <div>
+                <h6>Help</h6>
+                <a asp-controller="Home" asp-action="Privacy">Privacy &amp; terms</a>
+                <span class="text-secondary small">Demo store: no real payments are taken.</span>
+            </div>
+        </div>
+        <div class="footer-bottom">&copy; @DateTime.UtcNow.Year ShopNest</div>
+    </footer>
+
+    <script src="~/lib/jquery/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

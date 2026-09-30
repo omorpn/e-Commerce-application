@@ -1,0 +1,112 @@
+@model SellerDashboardViewModel
+@{
+    ViewData["Title"] = "Seller Central";
+}
+<div class="publish-header mt-3">
+    <div>
+        <div class="small text-uppercase fw-semibold opacity-75">ShopNest Seller Central</div>
+        <h1 class="h3 mb-0">Welcome back, @Model.SellerName</h1>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-light btn-sm" asp-controller="Sellers" asp-action="Details" asp-route-id="@Model.SellerId"><i class="bi bi-shop"></i> View your shop</a>
+        <a class="btn btn-outline-light btn-sm" asp-action="Profile"><i class="bi bi-person"></i> Profile</a>
+        <a class="btn btn-buy btn-sm" asp-action="Create" data-testid="new-listing"><i class="bi bi-plus-lg"></i> Create a listing</a>
+    </div>
+</div>
+
+<div class="stat-grid mt-3">
+    <div class="stat"><div class="stat-label">Listings</div><div class="stat-value">@Model.Listings.Count</div></div>
+    <div class="stat">
+        <div class="stat-label">Orders to fulfil</div>
+        <div class="stat-value @(Model.OpenOrders > 0 ? "text-danger" : "")" data-testid="open-orders">@Model.OpenOrders</div>
+        <a class="small" asp-action="Orders">Manage orders</a>
+    </div>
+    <div class="stat"><div class="stat-label">Units sold</div><div class="stat-value">@Model.TotalUnits</div></div>
+    <div class="stat"><div class="stat-label">Sales</div><div class="stat-value">@ViewHelpers.Currency(Model.TotalRevenue)</div></div>
+    <div class="stat">
+        <div class="stat-label">Your earnings</div>
+        <div class="stat-value text-success" data-testid="earnings">@ViewHelpers.Currency(Model.TotalEarnings)</div>
+        <div class="small text-secondary">@((Model.SellerRate * 100).ToString("0"))% of sales, @((Model.RoyaltyRate * 100).ToString("0"))% on ebooks</div>
+    </div>
+</div>
+
+<div class="panel mt-3">
+    <h2 class="h5">Your listings</h2>
+    @if (Model.Listings.Count == 0)
+    {
+        <div class="text-center py-4">
+            <i class="bi bi-shop display-5 text-secondary"></i>
+            <p class="mt-2 text-secondary">You haven't listed anything yet.</p>
+            <a class="btn btn-cart" asp-action="Create">Create your first listing</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 64px"></th>
+                        <th>Listing</th>
+                        <th>Status</th>
+                        <th class="text-end">Price</th>
+                        <th class="text-end">Sold</th>
+                        <th class="text-end">Earnings</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Listings)
+                    {
+                        var p = row.Product;
+                        <tr>
+                            <td><div class="mini-cover"><partial name="_ProductImage" model="p" /></div></td>
+                            <td>
+                                <a class="fw-semibold" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">@p.Name</a>
+                                <div class="small text-secondary">
+                                    <i class="bi @ViewHelpers.TypeIcon(p.Type)"></i> @Catalog.Label(p.Type) · @p.Category
+                                    @if (p.IsPhysical)
+                                    {
+                                        <span class="@(p.Stock <= 5 ? "text-danger" : "")">· @p.Stock in stock</span>
+                                    }
+                                    · <partial name="_Stars" model="row.Rating" /> @row.ReviewCount
+                                </div>
+                                @if (p.Status == ListingStatus.Blocked)
+                                {
+                                    <div class="small text-danger">@p.BlockedReason</div>
+                                }
+                            </td>
+                            <td><span class="badge @ViewHelpers.ListingBadge(p.Status)">@(p.Status == ListingStatus.Published ? "Live" : p.Status.ToString())</span></td>
+                            <td class="text-end">@ViewHelpers.Price(p.Price)</td>
+                            <td class="text-end">@row.UnitsSold</td>
+                            <td class="text-end">@ViewHelpers.Currency(row.Earnings)</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a class="btn btn-light border" asp-action="Edit" asp-route-id="@p.ProductCode">Edit</a>
+                                    @if (p.Status == ListingStatus.Draft)
+                                    {
+                                        <form asp-action="SetStatus" asp-route-id="@p.ProductCode" asp-route-publish="true" method="post" class="d-inline">
+                                            <button class="btn btn-success btn-sm rounded-0" type="submit">Publish</button>
+                                        </form>
+                                    }
+                                    else if (p.Status == ListingStatus.Published)
+                                    {
+                                        <form asp-action="SetStatus" asp-route-id="@p.ProductCode" asp-route-publish="false" method="post" class="d-inline">
+                                            <button class="btn btn-outline-secondary btn-sm rounded-0" type="submit">Unpublish</button>
+                                        </form>
+                                    }
+                                    @if (row.UnitsSold == 0)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@p.ProductCode" method="post" class="d-inline" onsubmit="return confirm('Delete this listing permanently?');">
+                                            <button class="btn btn-outline-danger btn-sm rounded-start-0" type="submit">Delete</button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

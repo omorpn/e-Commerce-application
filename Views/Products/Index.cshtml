@@ -1,0 +1,127 @@
+@model CatalogViewModel
+@{
+    ViewData["Title"] = Model.Heading;
+    var q = Model.Query;
+    object Route(int? page = null, string? category = null, bool clearCategory = false) => new
+    {
+        q = q.Q,
+        dept = q.Dept,
+        category = clearCategory ? null : category ?? q.Category,
+        minPrice = q.MinPrice,
+        maxPrice = q.MaxPrice,
+        sort = q.Sort,
+        page = page ?? 1
+    };
+    var first = (q.Page - 1) * Catalog.PageSize + 1;
+    var last = Math.Min(q.Page * Catalog.PageSize, Model.TotalCount);
+}
+<div class="results-bar">
+    <div>
+        @if (Model.TotalCount > 0)
+        {
+            <span>@first-@last of @Model.TotalCount results</span>
+        }
+        else
+        {
+            <span>No results</span>
+        }
+        <h1 class="h5 d-inline ms-2">@Model.Heading</h1>
+    </div>
+    <form method="get" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="q" value="@q.Q" />
+        <input type="hidden" name="dept" value="@q.Dept" />
+        <input type="hidden" name="category" value="@q.Category" />
+        <input type="hidden" name="minPrice" value="@q.MinPrice" />
+        <input type="hidden" name="maxPrice" value="@q.MaxPrice" />
+        <label for="sort" class="small text-nowrap">Sort by</label>
+        <select id="sort" name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="featured">Featured</option>
+            <option value="price-asc" selected="@(q.Sort == "price-asc")">Price: Low to High</option>
+            <option value="price-desc" selected="@(q.Sort == "price-desc")">Price: High to Low</option>
+            <option value="rating" selected="@(q.Sort == "rating")">Avg. customer review</option>
+            <option value="newest" selected="@(q.Sort == "newest")">Newest arrivals</option>
+            <option value="discount" selected="@(q.Sort == "discount")">Biggest discount</option>
+        </select>
+        <noscript><button class="btn btn-sm btn-light border">Go</button></noscript>
+    </form>
+</div>
+
+<div class="row g-4 mt-1">
+    <aside class="col-lg-3 col-xl-2">
+        <div class="filters">
+            <h2 class="filter-title">Department</h2>
+            @foreach (var (slug, label) in new[] { ("all", "All departments"), ("deals", "Today's Deals"), ("products", "Products"), ("services", "Services"), ("digital", "Digital downloads"), ("ebooks", "eBooks") })
+            {
+                <a class="filter-link @(q.Dept == slug ? "active" : "")" asp-action="Index" asp-route-q="@q.Q" asp-route-dept="@(slug == "all" ? null : slug)">@label</a>
+            }
+
+            @if (Model.Categories.Count > 0)
+            {
+                <h2 class="filter-title">Category</h2>
+                @if (!string.IsNullOrEmpty(q.Category))
+                {
+                    <a class="filter-link" href="@Url.Action("Index", Route(clearCategory: true))"><i class="bi bi-chevron-left"></i> Any category</a>
+                }
+                @foreach (var category in Model.Categories)
+                {
+                    <a class="filter-link @(category == q.Category ? "active" : "")" href="@Url.Action("Index", Route(category: category))">@category</a>
+                }
+            }
+
+            <h2 class="filter-title">Price</h2>
+            <form method="get" class="price-filter">
+                <input type="hidden" name="q" value="@q.Q" />
+                <input type="hidden" name="dept" value="@q.Dept" />
+                <input type="hidden" name="category" value="@q.Category" />
+                <input type="hidden" name="sort" value="@q.Sort" />
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text">$</span>
+                    <input type="number" min="0" step="0.01" name="minPrice" value="@q.MinPrice" class="form-control" placeholder="Min" aria-label="Minimum price" />
+                    <input type="number" min="0" step="0.01" name="maxPrice" value="@q.MaxPrice" class="form-control" placeholder="Max" aria-label="Maximum price" />
+                    <button class="btn btn-light border" type="submit">Go</button>
+                </div>
+            </form>
+        </div>
+    </aside>
+
+    <div class="col-lg-9 col-xl-10">
+        @if (Model.Results.Count == 0)
+        {
+            <div class="panel text-center py-5">
+                <i class="bi bi-search display-5 text-secondary"></i>
+                <h2 class="h5 mt-3">No results found</h2>
+                <p class="text-secondary">Try checking your spelling or use more general terms.</p>
+                <a class="btn btn-cart" asp-action="Index">Browse everything</a>
+            </div>
+        }
+        else
+        {
+            <div class="product-grid">
+                @foreach (var item in Model.Results)
+                {
+                    <partial name="_ProductCard" model="item" />
+                }
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="mt-4" aria-label="Results pages">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(q.Page == 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", Route(q.Page - 1))">Previous</a>
+                        </li>
+                        @for (var i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == q.Page ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", Route(i))">@i</a>
+                            </li>
+                        }
+                        <li class="page-item @(q.Page == Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", Route(q.Page + 1))">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+    </div>
+</div>

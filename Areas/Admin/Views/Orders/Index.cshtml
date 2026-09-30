@@ -1,0 +1,45 @@
+@model List<Order>
+@{
+    ViewData["Title"] = "Manage orders";
+    var status = ViewData["status"] as OrderStatus?;
+}
+<partial name="_AdminNav" />
+<div class="panel mt-3">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+        <h1 class="h4 mb-0">Orders</h1>
+        <form method="get" class="d-flex gap-2">
+            <input name="q" value="@ViewData["q"]" class="form-control form-control-sm" placeholder="Order #, name or email" />
+            <select name="status" class="form-select form-select-sm">
+                <option value="">Any status</option>
+                @foreach (var s in Enum.GetValues<OrderStatus>())
+                {
+                    <option value="@s" selected="@(status == s)">@s</option>
+                }
+            </select>
+            <button class="btn btn-light border btn-sm">Filter</button>
+        </form>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Items</th><th class="text-end">Total</th><th>Payment</th><th>Status</th></tr></thead>
+            <tbody>
+                @foreach (var order in Model)
+                {
+                    <tr>
+                        <td><a asp-action="Details" asp-route-id="@order.OrderNo">#@order.OrderNo</a></td>
+                        <td>@order.OrderDate.ToString("MMM d, yyyy HH:mm")</td>
+                        <td>@(order.CustomerName ?? "API order")<div class="small text-secondary">@order.Email</div></td>
+                        <td>@order.Products.Sum(i => i.Quantity)</td>
+                        <td class="text-end">@ViewHelpers.Currency(order.InvoicePrice)</td>
+                        <td class="small">@order.PaymentMethod</td>
+                        <td><span class="badge @ViewHelpers.StatusBadge(order.Status)">@order.Status</span></td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-secondary">No orders found.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

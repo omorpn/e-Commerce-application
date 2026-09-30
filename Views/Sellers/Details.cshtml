@@ -1,0 +1,32 @@
+@model SellerPageViewModel
+@{
+    ViewData["Title"] = Model.Seller.SellerName;
+}
+<div class="publish-header mt-3">
+    <div>
+        <div class="small text-uppercase fw-semibold opacity-75">ShopNest seller</div>
+        <h1 class="h3 mb-1">@Model.Seller.SellerName</h1>
+        <div class="small">
+            <partial name="_Stars" model="Model.Rating" />
+            @(Model.ReviewCount == 0 ? "No ratings yet" : $"{Model.Rating:0.0} from {Model.ReviewCount} rating{(Model.ReviewCount == 1 ? "" : "s")}")
+            · Selling since @Model.Seller.CreatedAt.ToString("MMMM yyyy")
+        </div>
+    </div>
+</div>
+@if (!string.IsNullOrWhiteSpace(Model.Seller.SellerBio))
+{
+    <div class="panel mt-3 description">@Model.Seller.SellerBio</div>
+}
+<section class="shelf">
+    <h2 class="h5">@Model.Listings.Count listing@(Model.Listings.Count == 1 ? "" : "s")</h2>
+    @if (Model.Listings.Count == 0)
+    {
+        <p class="text-secondary">This seller has no live listings right now.</p>
+    }
+    <div class="product-grid">
+        @foreach (var item in Model.Listings)
+        {
+            <partial name="_ProductCard" model="item" />
+        }
+    </div>
+</section>

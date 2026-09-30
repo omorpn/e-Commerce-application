@@ -1,0 +1,371 @@
+@model ProductDetailsViewModel
+@{
+    var p = Model.Product;
+    ViewData["Title"] = p.Name;
+    var signedIn = User.Identity?.IsAuthenticated == true;
+    var returnUrl = Url.Action("Details", new { id = p.ProductCode });
+    var format = FileSignatures.FromContentType(p.FileContentType)?.Label ?? "File";
+    var canRead = p.FileContentType == FileSignatures.Pdf.ContentType;
+    var dept = Catalog.Slug(p.Type);
+}
+<nav aria-label="breadcrumb" class="mt-3">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a asp-action="Index" asp-route-dept="@dept">@Catalog.DepartmentName(p.Type)</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index" asp-route-dept="@dept" asp-route-category="@p.Category">@p.Category</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@p.Name</li>
+    </ol>
+</nav>
+
+@if (!p.IsListed)
+{
+    <div class="alert alert-warning small">
+        <i class="bi bi-eye-slash"></i> This listing is <strong>@p.Status.ToString().ToLowerInvariant()</strong> and isn't visible to shoppers.
+        @if (p.Status == ListingStatus.Blocked && p.BlockedReason != null)
+        {
+            <span>Reason: @p.BlockedReason</span>
+        }
+    </div>
+}
+
+<div class="row g-4 product-detail">
+    <div class="col-md-5 col-lg-4">
+        <div class="detail-media">
+            <partial name="_ProductImage" model="p" />
+        </div>
+    </div>
+
+    <div class="col-md-7 col-lg-5">
+        <h1 class="h3 mb-1">@p.Name</h1>
+        @if (!string.IsNullOrEmpty(p.Subtitle))
+        {
+            <div class="text-secondary mb-1">@p.Subtitle</div>
+        }
+        @if (p.IsEbook)
+        {
+            <div class="mb-2">by <a asp-action="Index" asp-route-dept="ebooks" asp-route-q="@p.AuthorName">@p.AuthorName</a> <span class="text-secondary">(Author)</span> <span class="badge text-bg-dark ms-1">eBook</span></div>
+        }
+        else if (!p.IsPhysical)
+        {
+            <div class="mb-2"><span class="badge text-bg-dark"><i class="bi @ViewHelpers.TypeIcon(p.Type)"></i> @Catalog.Label(p.Type)</span></div>
+        }
+        @if (Model.SellerName != null)
+        {
+            <div class="small mb-1">Visit <a asp-controller="Sellers" asp-action="Details" asp-route-id="@p.SellerId">@Model.SellerName's shop</a></div>
+        }
+        <a href="#reviews" class="small text-decoration-none">
+            <partial name="_Stars" model="Model.Rating" />
+            @if (Model.ReviewCount == 0)
+            {
+                <span class="text-link">No ratings yet</span>
+            }
+            else
+            {
+                <span>@Model.Rating.ToString("0.0")</span>
+                <span class="text-link">@Model.ReviewCount rating@(Model.ReviewCount == 1 ? "" : "s")</span>
+            }
+        </a>
+        <hr />
+        @if (p.IsDeal)
+        {
+            <div><span class="badge badge-deal-lg">-@p.DiscountPercent%</span> <span class="small text-danger fw-semibold">Limited time deal</span></div>
+        }
+        <div class="price-lg @(p.Price == 0 ? "price-free" : "")">@ViewHelpers.Price(p.Price)@(p.IsService ? " per session" : "")</div>
+        @if (p.IsDeal)
+        {
+            <div class="small text-secondary">List price: <span class="list-price">@ViewHelpers.Currency(p.ListPrice!.Value)</span></div>
+        }
+        @switch (p.Type)
+        {
+            case ProductType.Physical:
+                <div class="small text-secondary">FREE delivery on this item. Returns accepted within 30 days.</div>
+                break;
+            case ProductType.Service:
+                <div class="small text-secondary">Choose your date at checkout. The provider confirms and completes the booking.</div>
+                break;
+            default:
+                <div class="small text-secondary">Delivered instantly to your library. Download on any device.</div>
+                break;
+        }
+
+        <h2 class="h6 mt-4">@(p.IsEbook ? "Book description" : p.IsService ? "About this service" : "About this item")</h2>
+        <div class="description">@p.Description</div>
+
+        @if (p.IsService)
+        {
+            <h2 class="h6 mt-4">Service details</h2>
+            <table class="table table-sm small details-table">
+                <tbody>
+                    <tr><th>Duration</th><td>@ViewHelpers.Duration(p.DurationMinutes)</td></tr>
+                    <tr><th>Location</th><td>@Catalog.LocationLabel(p.ServiceLocation)</td></tr>
+                    @if (p.ServiceArea != null)
+                    {
+                        <tr><th>Area served</th><td>@p.ServiceArea</td></tr>
+                    }
+                    <tr><th>Category</th><td>@p.Category</td></tr>
+                </tbody>
+            </table>
+        }
+        else if (p.Type == ProductType.Digital)
+        {
+            <h2 class="h6 mt-4">Download details</h2>
+            <table class="table table-sm small details-table">
+                <tbody>
+                    <tr><th>File format</th><td>@format</td></tr>
+                    <tr><th>File size</th><td>@ViewHelpers.FileSize(p.FileSize)</td></tr>
+                    <tr><th>Category</th><td>@p.Category</td></tr>
+                    <tr><th>Delivery</th><td>Instant download after purchase</td></tr>
+                </tbody>
+            </table>
+        }
+        @if (p.IsEbook)
+        {
+            <h2 class="h6 mt-4">Product details</h2>
+            <table class="table table-sm small details-table">
+                <tbody>
+                    <tr><th>Author</th><td>@p.AuthorName</td></tr>
+                    <tr><th>Language</th><td>@p.Language</td></tr>
+                    @if (p.PageCount.HasValue)
+                    {
+                        <tr><th>Print length</th><td>@p.PageCount pages</td></tr>
+                    }
+                    <tr><th>File format</th><td>@format</td></tr>
+                    <tr><th>File size</th><td>@ViewHelpers.FileSize(p.FileSize)</td></tr>
+                    @if (p.PublishedAt.HasValue)
+                    {
+                        <tr><th>Publication date</th><td>@p.PublishedAt.Value.ToString("MMMM d, yyyy")</td></tr>
+                    }
+                    <tr><th>Genre</th><td>@p.Category</td></tr>
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="col-lg-3">
+        <div class="buy-box" data-testid="buy-box">
+            <div class="price-lg @(p.Price == 0 ? "price-free" : "")">@ViewHelpers.Price(p.Price)</div>
+
+            @if (Model.Owned)
+            {
+                <div class="alert alert-success small py-2"><i class="bi bi-check-circle-fill"></i> You own this item</div>
+                @if (canRead)
+                {
+                    <a class="btn btn-buy w-100 mb-2" asp-controller="Library" asp-action="Download" asp-route-id="@p.ProductCode" asp-route-read="true" target="_blank">Open now</a>
+                }
+                <a class="btn btn-cart w-100" asp-controller="Library" asp-action="Download" asp-route-id="@p.ProductCode">Download @format</a>
+            }
+            else if (Model.IsSeller)
+            {
+                <div class="alert alert-info small py-2"><i class="bi bi-person-badge"></i> This is your listing</div>
+                <a class="btn btn-cart w-100 mb-2" asp-controller="Sell" asp-action="Edit" asp-route-id="@p.ProductCode">Edit listing</a>
+                @if (p.IsDownloadable)
+                {
+                    <a class="btn btn-light border w-100" asp-controller="Library" asp-action="Download" asp-route-id="@p.ProductCode">Download file</a>
+                }
+            }
+            else if (!p.IsListed)
+            {
+                <div class="text-danger">Not currently available.</div>
+            }
+            else if (p.IsDownloadable && p.Price == 0)
+            {
+                @if (signedIn)
+                {
+                    <form asp-controller="Library" asp-action="Claim" asp-route-id="@p.ProductCode" method="post">
+                        <button class="btn btn-buy w-100" type="submit">Get it free</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="btn btn-buy w-100" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@returnUrl">Sign in to get it free</a>
+                }
+            }
+            else if (p.IsDownloadable)
+            {
+                <form asp-controller="Cart" asp-action="Add" method="post" class="d-grid gap-2">
+                    <input type="hidden" name="productCode" value="@p.ProductCode" />
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    @if (Model.InCart > 0)
+                    {
+                        <a class="btn btn-cart" asp-controller="Cart" asp-action="Index">In your cart. View cart</a>
+                    }
+                    else
+                    {
+                        <button class="btn btn-cart" type="submit">Add to Cart</button>
+                    }
+                    <button class="btn btn-buy" type="submit" name="buyNow" value="true">Buy now</button>
+                </form>
+            }
+            else if (p.IsService)
+            {
+                <div class="small mb-2"><i class="bi bi-clock"></i> @ViewHelpers.Duration(p.DurationMinutes) · @Catalog.LocationLabel(p.ServiceLocation)</div>
+                <form asp-controller="Cart" asp-action="Add" method="post" class="d-grid gap-2">
+                    <input type="hidden" name="productCode" value="@p.ProductCode" />
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <label class="small" for="quantity">Sessions</label>
+                    <select id="quantity" name="quantity" class="form-select form-select-sm">
+                        @for (var i = 1; i <= 10; i++)
+                        {
+                            <option value="@i">@i</option>
+                        }
+                    </select>
+                    <button class="btn btn-cart" type="submit">Add to Cart</button>
+                    <button class="btn btn-buy" type="submit" name="buyNow" value="true">Book now</button>
+                </form>
+                @if (Model.InCart > 0)
+                {
+                    <div class="small mt-2 text-secondary">@Model.InCart already in your <a asp-controller="Cart" asp-action="Index">cart</a></div>
+                }
+            }
+            else if (p.Stock > 0)
+            {
+                <div class="@(p.Stock <= 5 ? "text-danger" : "text-success") fw-semibold mb-2">
+                    @(p.Stock <= 5 ? $"Only {p.Stock} left in stock - order soon." : "In Stock")
+                </div>
+                <form asp-controller="Cart" asp-action="Add" method="post" class="d-grid gap-2">
+                    <input type="hidden" name="productCode" value="@p.ProductCode" />
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <label class="small" for="quantity">Quantity</label>
+                    <select id="quantity" name="quantity" class="form-select form-select-sm">
+                        @for (var i = 1; i <= Math.Min(p.Stock, 10); i++)
+                        {
+                            <option value="@i">@i</option>
+                        }
+                    </select>
+                    <button class="btn btn-cart" type="submit">Add to Cart</button>
+                    <button class="btn btn-buy" type="submit" name="buyNow" value="true">Buy Now</button>
+                </form>
+                @if (Model.InCart > 0)
+                {
+                    <div class="small mt-2 text-secondary">@Model.InCart already in your <a asp-controller="Cart" asp-action="Index">cart</a></div>
+                }
+            }
+            else
+            {
+                <div class="text-danger fw-semibold">Currently unavailable.</div>
+                <div class="small text-secondary">We don't know when or if this item will be back in stock.</div>
+            }
+
+            @if (signedIn && !Model.IsSeller)
+            {
+                <form asp-controller="Wishlist" asp-action="Toggle" method="post" class="mt-2">
+                    <input type="hidden" name="productCode" value="@p.ProductCode" />
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <button class="btn btn-light border btn-sm w-100" type="submit" data-testid="wishlist-toggle">
+                        <i class="bi @(Model.InWishlist ? "bi-heart-fill text-danger" : "bi-heart")"></i> @(Model.InWishlist ? "In your wish list" : "Add to wish list")
+                    </button>
+                </form>
+            }
+
+            <hr />
+            <div class="small text-secondary">
+                <div><i class="bi bi-shield-lock"></i> Secure transaction</div>
+                <div>@(p.IsService ? "Provided" : "Sold") by <strong>@(Model.SellerName ?? (p.IsEbook ? p.AuthorName : "ShopNest"))</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<hr class="my-4" id="reviews" />
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <h2 class="h4">Customer reviews</h2>
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <partial name="_Stars" model="Model.Rating" />
+            <span class="fw-semibold">@Model.Rating.ToString("0.0") out of 5</span>
+        </div>
+        <div class="small text-secondary mb-3">@Model.ReviewCount global rating@(Model.ReviewCount == 1 ? "" : "s")</div>
+        @for (var star = 5; star >= 1; star--)
+        {
+            var count = Model.RatingHistogram[star - 1];
+            var pct = Model.ReviewCount == 0 ? 0 : (int)Math.Round(100.0 * count / Model.ReviewCount);
+            <div class="histogram-row small">
+                <span>@star star</span>
+                <div class="progress" role="progressbar" aria-label="@star star reviews" aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-bar" style="width: @pct%"></div>
+                </div>
+                <span>@pct%</span>
+            </div>
+        }
+
+        <hr />
+        @if (!signedIn)
+        {
+            <h3 class="h6">Review this product</h3>
+            <p class="small text-secondary">Share your thoughts with other customers.</p>
+            <a class="btn btn-light border w-100" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@(returnUrl + "#reviews")">Sign in to write a review</a>
+        }
+        else if (!Model.IsSeller)
+        {
+            <h3 class="h6">@(Model.UserReview == null ? (p.IsService ? "Review this service" : "Review this product") : "Edit your review")</h3>
+            <form asp-controller="Reviews" asp-action="Save" method="post" class="review-form">
+                <input type="hidden" name="ProductCode" value="@p.ProductCode" />
+                <fieldset class="star-input mb-2">
+                    <legend class="visually-hidden">Rating</legend>
+                    @for (var star = 5; star >= 1; star--)
+                    {
+                        <input type="radio" id="star@(star)" name="Rating" value="@star" checked="@(Model.ReviewForm.Rating == star)" required />
+                        <label for="star@(star)" title="@star star@(star == 1 ? "" : "s")"><i class="bi bi-star-fill"></i></label>
+                    }
+                </fieldset>
+                <input name="Title" value="@Model.ReviewForm.Title" class="form-control form-control-sm mb-2" maxlength="120" placeholder="Headline" />
+                <textarea name="Body" class="form-control form-control-sm mb-2" rows="3" maxlength="4000" placeholder="What did you like or dislike?">@Model.ReviewForm.Body</textarea>
+                <button class="btn btn-cart btn-sm w-100" type="submit">Submit review</button>
+            </form>
+            @if (Model.UserReview != null)
+            {
+                <form asp-controller="Reviews" asp-action="Delete" method="post" class="mt-2">
+                    <input type="hidden" name="productCode" value="@p.ProductCode" />
+                    <button class="btn btn-link btn-sm text-danger p-0" type="submit">Delete my review</button>
+                </form>
+            }
+        }
+    </div>
+
+    <div class="col-md-8">
+        @if (Model.Reviews.Count == 0)
+        {
+            <p class="text-secondary">No reviews yet. Be the first to share your thoughts.</p>
+        }
+        @foreach (var review in Model.Reviews)
+        {
+            <article class="review">
+                <div class="d-flex align-items-center gap-2 small">
+                    <i class="bi bi-person-circle fs-5 text-secondary"></i>
+                    <span>@review.ReviewerName</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <partial name="_Stars" model="(double)review.Rating" />
+                    @if (!string.IsNullOrEmpty(review.Title))
+                    {
+                        <strong>@review.Title</strong>
+                    }
+                </div>
+                <div class="small text-secondary">
+                    Reviewed on @review.CreatedAt.ToString("MMMM d, yyyy")
+                    @if (review.VerifiedPurchase)
+                    {
+                        <span class="text-verified ms-1">Verified Purchase</span>
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(review.Body))
+                {
+                    <p class="mt-2 mb-0 description">@review.Body</p>
+                }
+            </article>
+        }
+    </div>
+</div>
+
+@if (Model.Related.Count > 0)
+{
+    <section class="shelf mt-4">
+        <div class="shelf-head"><h2 class="h5">More in @p.Category</h2></div>
+        <div class="product-grid">
+            @foreach (var item in Model.Related)
+            {
+                <partial name="_ProductCard" model="item" />
+            }
+        </div>
+    </section>
+}

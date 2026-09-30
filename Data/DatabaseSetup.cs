@@ -46,7 +46,8 @@ namespace e_Commerce_application.Data
                 Database = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/')),
                 Username = Uri.UnescapeDataString(userInfo[0]),
                 Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : null,
-                SslMode = SslMode.Require
+                // Use TLS when the server offers it (hosted databases); private networks may not.
+                SslMode = SslMode.Prefer
             };
 
             foreach (var pair in uri.Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))

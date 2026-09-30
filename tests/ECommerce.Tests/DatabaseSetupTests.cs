@@ -30,6 +30,19 @@ namespace ECommerce.Tests
         }
 
         [Fact]
+        public void UrlWithoutSslMode_UsesTlsWhenAvailable()
+        {
+            // Render's internal database URLs carry no sslmode and a default port.
+            var builder = new NpgsqlConnectionStringBuilder(
+                DatabaseSetup.ToNpgsqlConnectionString("postgresql://shopnest:secret@dpg-abc123-a/shopnest"));
+
+            Assert.Equal("dpg-abc123-a", builder.Host);
+            Assert.Equal(5432, builder.Port);
+            Assert.Equal("shopnest", builder.Database);
+            Assert.Equal(SslMode.Prefer, builder.SslMode);
+        }
+
+        [Fact]
         public void KeepsKeyValueConnectionStrings()
         {
             const string value = "Host=localhost;Database=shop;Username=u;Password=p";

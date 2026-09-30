@@ -1,6 +1,10 @@
 # Render Blueprint: https://render.com/docs/blueprint-spec
-# Free plan, no credit card needed. Data is kept in a free PostgreSQL database
-# (for example Neon: https://neon.tech), so nothing is lost when the service sleeps.
+# Free plan, no credit card needed. The Blueprint also creates a free Render
+# PostgreSQL database and connects the app to it, so data survives restarts.
+#
+# Render's free database expires 30 days after it is created. Before then, upgrade it
+# in the Render dashboard, or set ConnectionStrings__Default on the web service to
+# another PostgreSQL database (e.g. Neon or Supabase) and redeploy.
 services:
   - type: web
     name: shopnest
@@ -8,13 +12,19 @@ services:
     plan: free
     healthCheckPath: /healthz
     envVars:
-      # Paste your PostgreSQL connection string, e.g.
-      # postgresql://user:password@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
       - key: ConnectionStrings__Default
-        sync: false
+        fromDatabase:
+          name: shopnest-db
+          property: connectionString
       # The password needs 8+ characters with upper and lower case letters, a digit
       # and a symbol, e.g. MyShop#2026
       - key: Admin__Email
         sync: false
       - key: Admin__Password
         sync: false
+
+databases:
+  - name: shopnest-db
+    plan: free
+    databaseName: shopnest
+    user: shopnest

@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Text.Json.Serialization;
 
@@ -20,15 +19,17 @@ if (!string.IsNullOrEmpty(port))
     builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 }
 
-var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=ecommerce.db";
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
-
-// Keep sign-in cookies valid across restarts when a persistent folder is configured.
-var keysPath = builder.Configuration["DataProtection:KeysPath"];
-if (!string.IsNullOrWhiteSpace(keysPath))
+// SQLite by default; a PostgreSQL connection string (e.g. a free Neon database) switches provider.
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
 {
-    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+    connectionString = "Data Source=ecommerce.db";
 }
+var usesPostgres = DatabaseSetup.IsPostgres(connectionString);
+builder.Services.AddAppDatabase(connectionString);
+
+// Sign-in keys live in the database so logins survive restarts and redeploys.
+builder.Services.AddDataProtection().PersistKeysToDbContext<AppDbContext>();
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
@@ -68,7 +69,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
+builder.Services.AddFileStorage(builder.Configuration, usesPostgres);
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<ListingService>();

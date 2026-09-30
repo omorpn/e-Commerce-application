@@ -1,12 +1,15 @@
 using e_Commerce_application.Models;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace e_Commerce_application.Data
 {
-    public class AppDbContext : IdentityDbContext<ApplicationUser>
+    // Shared model. SqliteAppDbContext and PostgresAppDbContext add provider-specific
+    // settings and each has its own migrations.
+    public abstract class AppDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionKeyContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        protected AppDbContext(DbContextOptions options) : base(options) { }
 
         public DbSet<Product> Products => Set<Product>();
         public DbSet<Order> Orders => Set<Order>();
@@ -14,12 +17,10 @@ namespace e_Commerce_application.Data
         public DbSet<LibraryEntry> LibraryEntries => Set<LibraryEntry>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
+        public DbSet<FileBlob> FileBlobs => Set<FileBlob>();
 
-        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-        {
-            // SQLite has no decimal type; store money as REAL so it can be sorted and compared in SQL.
-            configurationBuilder.Properties<decimal>().HaveConversion<double>();
-        }
+        // Sign-in encryption keys, so logins survive restarts on hosts without a disk.
+        public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -46,6 +47,8 @@ namespace e_Commerce_application.Data
                 e.HasIndex(i => i.ProductCode);
                 e.HasIndex(i => i.SellerId);
             });
+
+            builder.Entity<FileBlob>(e => e.HasIndex(f => f.Key).IsUnique());
 
             builder.Entity<WishlistItem>(e =>
             {

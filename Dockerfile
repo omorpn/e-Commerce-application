@@ -10,12 +10,13 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Everything that must survive restarts lives under /data: mount a persistent disk there.
+# Without a database URL the app uses SQLite under /data (mount a persistent disk there).
+# Set ConnectionStrings__Default to a PostgreSQL URL (e.g. a free Neon database) to keep
+# all data, uploads included, in PostgreSQL instead.
 ENV ASPNETCORE_ENVIRONMENT=Production \
     ASPNETCORE_HTTP_PORTS=8080 \
     ConnectionStrings__Default="Data Source=/data/ecommerce.db" \
-    Storage__Root=/data/storage \
-    DataProtection__KeysPath=/data/keys
+    Storage__Root=/data/storage
 RUN mkdir -p /data
 VOLUME /data
 EXPOSE 8080

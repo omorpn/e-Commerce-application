@@ -23,7 +23,12 @@ namespace ECommerce.Tests
         {
             Directory.CreateDirectory(_root);
             builder.UseEnvironment("Testing");
-            builder.UseSetting("ConnectionStrings:Default", $"Data Source={Path.Combine(_root, "test.db")};Pooling=False");
+            // Set TEST_POSTGRES (e.g. "Host=localhost;Username=shop;Password=...") to run the suite
+            // against PostgreSQL; each factory gets its own database. SQLite otherwise.
+            var postgres = Environment.GetEnvironmentVariable("TEST_POSTGRES");
+            builder.UseSetting("ConnectionStrings:Default", string.IsNullOrEmpty(postgres)
+                ? $"Data Source={Path.Combine(_root, "test.db")};Pooling=False"
+                : $"{postgres};Database=shop_test_{Guid.NewGuid():N}");
             builder.UseSetting("Storage:Root", Path.Combine(_root, "storage"));
             builder.UseSetting("Admin:Email", AdminEmail);
             builder.UseSetting("Admin:Password", AdminPassword);

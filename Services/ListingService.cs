@@ -105,6 +105,12 @@ namespace e_Commerce_application.Services
             }
 
             var imageKind = await Uploads.CheckImageAsync(model.Image, nameof(model.Image), modelState);
+
+            if (model.File != null && model.File.Length > _storage.MaxFileBytes)
+            {
+                modelState.AddModelError(nameof(model.File), $"Files must be {_storage.MaxFileBytes / (1024 * 1024)} MB or smaller on this store.");
+                fileKind = null;
+            }
             return (fileKind, imageKind);
         }
 

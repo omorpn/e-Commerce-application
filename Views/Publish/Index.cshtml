@@ -1,0 +1,95 @@
+@model PublishDashboardViewModel
+@{
+    ViewData["Title"] = "Publishing dashboard";
+}
+<div class="publish-header mt-3">
+    <div>
+        <div class="small text-uppercase fw-semibold opacity-75">ShopNest Direct Publishing</div>
+        <h1 class="h3 mb-0">Welcome back, @Model.PenName</h1>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-light btn-sm" asp-action="Profile"><i class="bi bi-person"></i> Author profile</a>
+        <a class="btn btn-buy btn-sm" asp-action="Create" data-testid="new-ebook"><i class="bi bi-plus-lg"></i> Create a new ebook</a>
+    </div>
+</div>
+
+<div class="stat-grid mt-3">
+    <div class="stat"><div class="stat-label">Titles</div><div class="stat-value">@Model.Titles.Count</div></div>
+    <div class="stat"><div class="stat-label">Units sold</div><div class="stat-value">@Model.TotalUnits</div></div>
+    <div class="stat"><div class="stat-label">Sales</div><div class="stat-value">@ViewHelpers.Currency(Model.TotalRevenue)</div></div>
+    <div class="stat"><div class="stat-label">Royalties earned (@((Model.RoyaltyRate * 100).ToString("0"))%)</div><div class="stat-value text-success" data-testid="royalties">@ViewHelpers.Currency(Model.TotalRoyalty)</div></div>
+</div>
+
+<div class="panel mt-3">
+    <h2 class="h5">Your bookshelf</h2>
+    @if (Model.Titles.Count == 0)
+    {
+        <div class="text-center py-4">
+            <i class="bi bi-journal-plus display-5 text-secondary"></i>
+            <p class="mt-2 text-secondary">You haven't created any titles yet.</p>
+            <a class="btn btn-cart" asp-action="Create">Create your first ebook</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 64px"></th>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th class="text-end">Price</th>
+                        <th class="text-end">Units</th>
+                        <th class="text-end">Royalties</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Titles)
+                    {
+                        var p = row.Product;
+                        <tr>
+                            <td><div class="mini-cover"><partial name="_ProductImage" model="p" /></div></td>
+                            <td>
+                                <a class="fw-semibold" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">@p.Name</a>
+                                <div class="small text-secondary">@p.Category · <partial name="_Stars" model="row.Rating" /> @row.ReviewCount</div>
+                                @if (p.Status == ListingStatus.Blocked)
+                                {
+                                    <div class="small text-danger">@p.BlockedReason</div>
+                                }
+                            </td>
+                            <td><span class="badge @ViewHelpers.ListingBadge(p.Status)">@(p.Status == ListingStatus.Published ? "Live" : p.Status.ToString())</span></td>
+                            <td class="text-end">@ViewHelpers.Price(p.Price)</td>
+                            <td class="text-end">@row.UnitsSold</td>
+                            <td class="text-end">@ViewHelpers.Currency(row.Royalty)</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a class="btn btn-light border" asp-action="Edit" asp-route-id="@p.ProductCode">Edit</a>
+                                    @if (p.Status == ListingStatus.Draft)
+                                    {
+                                        <form asp-action="SetStatus" asp-route-id="@p.ProductCode" asp-route-publish="true" method="post" class="d-inline">
+                                            <button class="btn btn-success btn-sm rounded-0" type="submit">Publish</button>
+                                        </form>
+                                    }
+                                    else if (p.Status == ListingStatus.Published)
+                                    {
+                                        <form asp-action="SetStatus" asp-route-id="@p.ProductCode" asp-route-publish="false" method="post" class="d-inline">
+                                            <button class="btn btn-outline-secondary btn-sm rounded-0" type="submit">Unpublish</button>
+                                        </form>
+                                    }
+                                    @if (row.UnitsSold == 0)
+                                    {
+                                        <form asp-action="Delete" asp-route-id="@p.ProductCode" method="post" class="d-inline" onsubmit="return confirm('Delete this title permanently?');">
+                                            <button class="btn btn-outline-danger btn-sm rounded-start-0" type="submit">Delete</button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

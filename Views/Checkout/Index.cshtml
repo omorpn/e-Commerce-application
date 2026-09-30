@@ -1,0 +1,115 @@
+@model CheckoutViewModel
+@{
+    ViewData["Title"] = "Checkout";
+    var cart = Model.Cart;
+}
+<h1 class="h3 mt-3">Checkout <span class="text-secondary fs-6">(@cart.ItemCount item@(cart.ItemCount == 1 ? "" : "s"))</span></h1>
+<form asp-action="Index" method="post" class="row g-4" novalidate>
+    <div class="col-lg-8">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger small empty-hidden"></div>
+
+        <div class="panel mb-3">
+            <h2 class="h5"><span class="step">1</span> Contact details</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" autocomplete="name" />
+                    <span asp-validation-for="FullName" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" autocomplete="email" />
+                    <span asp-validation-for="Email" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Phone" class="form-label">Phone <span class="text-secondary">(optional)</span></label>
+                    <input asp-for="Phone" class="form-control" autocomplete="tel" />
+                    <span asp-validation-for="Phone" class="text-danger small"></span>
+                </div>
+            </div>
+        </div>
+
+        @if (cart.HasPhysical)
+        {
+            <div class="panel mb-3">
+                <h2 class="h5"><span class="step">2</span> Shipping address</h2>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label asp-for="AddressLine" class="form-label"></label>
+                        <input asp-for="AddressLine" class="form-control" autocomplete="street-address" required />
+                        <span asp-validation-for="AddressLine" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="City" class="form-label"></label>
+                        <input asp-for="City" class="form-control" autocomplete="address-level2" required />
+                        <span asp-validation-for="City" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="State" class="form-label"></label>
+                        <input asp-for="State" class="form-control" autocomplete="address-level1" />
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="PostalCode" class="form-label"></label>
+                        <input asp-for="PostalCode" class="form-control" autocomplete="postal-code" />
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="Country" class="form-label"></label>
+                        <input asp-for="Country" class="form-control" autocomplete="country-name" required />
+                        <span asp-validation-for="Country" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="panel mb-3">
+            <h2 class="h5"><span class="step">@(cart.HasPhysical ? 3 : 2)</span> Payment method</h2>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" asp-for="PaymentMethod" value="@CheckoutViewModel.PayByCard" id="pay-card" />
+                <label class="form-check-label" for="pay-card"><i class="bi bi-credit-card"></i> Credit or debit card <span class="badge text-bg-light border">Demo: no charge</span></label>
+            </div>
+            @if (cart.HasPhysical)
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" asp-for="PaymentMethod" value="@CheckoutViewModel.PayOnDelivery" id="pay-delivery" />
+                    <label class="form-check-label" for="pay-delivery"><i class="bi bi-cash-coin"></i> Pay on delivery</label>
+                </div>
+            }
+            <span asp-validation-for="PaymentMethod" class="text-danger small"></span>
+            <p class="small text-secondary mt-2 mb-0">This is a demo store. No card details are collected and no money is charged.</p>
+        </div>
+
+        <div class="panel">
+            <h2 class="h5"><span class="step">@(cart.HasPhysical ? 4 : 3)</span> Review items</h2>
+            @foreach (var line in cart.Lines)
+            {
+                <div class="cart-line compact">
+                    <div class="cart-thumb"><partial name="_ProductImage" model="line.Product" /></div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">@line.Product.Name</div>
+                        <div class="small text-secondary">@(line.Product.IsEbook ? "eBook: delivered to your library" : $"Qty: {line.Quantity}")</div>
+                    </div>
+                    <div class="fw-bold">@ViewHelpers.Price(line.LineTotal)</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel order-summary">
+            <button type="submit" class="btn btn-buy w-100 mb-3" data-testid="place-order">Place your order</button>
+            <h2 class="h5">Order Summary</h2>
+            <div class="d-flex justify-content-between small"><span>Items:</span><span>@ViewHelpers.Currency(cart.Subtotal)</span></div>
+            @if (cart.HasPhysical)
+            {
+                <div class="d-flex justify-content-between small"><span>Shipping &amp; handling:</span><span>@ViewHelpers.Currency(0)</span></div>
+            }
+            <hr />
+            <div class="d-flex justify-content-between fs-5 fw-bold text-danger-emphasis"><span>Order total:</span><span>@ViewHelpers.Currency(cart.Subtotal)</span></div>
+            <p class="small text-secondary mt-3 mb-0">By placing your order, you agree to our <a asp-controller="Home" asp-action="Privacy">privacy notice and terms</a>.</p>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

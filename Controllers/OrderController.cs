@@ -1,37 +1,60 @@
 using e_Commerce_application.Models;
+using e_Commerce_application.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace e_Commerce_application.Controllers
 {
+    // JSON API for placing orders for physical products.
     [Controller]
     [Route("/order")]
+    [IgnoreAntiforgeryToken]
     public class OrderController : Controller
     {
-        [HttpPost("orders")]
-        public ActionResult Order([FromBody] Order order)
-        {
-            var totalPrice = order.Products?.Sum(e => e.Quantity * e.Price) ?? 0;
+        private readonly OrderService _orders;
 
-            if (Math.Abs(order.InvoicePrice - totalPrice) > 0.005)
+        public OrderController(OrderService orders) => _orders = orders;
+
+        [HttpPost("orders")]
+        public async Task<ActionResult> Order([FromBody] Order order)
+        {
+            var products = order.Products ?? new List<OrderItem>();
+            var totalPrice = products.Sum(e => e.Quantity * e.Price);
+
+            if (Math.Abs(order.InvoicePrice - totalPrice) > 0.005m)
             {
-                ModelState.AddModelError("TotalPrice", "InvoicePrice doesn't match with the total cost of the specified products in the order.");
+                ModelState.AddModelError("TotalPrice", OrderService.InvoiceMismatchError);
             }
 
             if (!ModelState.IsValid)
             {
-                var errors = string.Join("\n", ModelState.Values.SelectMany(e => e.Errors).Select(error => error.ErrorMessage));
-                return BadRequest(errors);
+                return BadRequest(ErrorText(ModelState.Values.SelectMany(e => e.Errors).Select(error => error.ErrorMessage)));
             }
 
-            var newOrder = new Order
+            var result = await _orders.PlaceOrderAsync(new PlaceOrderRequest
             {
-                OrderNo = Random.Shared.Next(1000, 9999),
                 OrderDate = order.OrderDate,
-                InvoicePrice = order.InvoicePrice,
-                Products = order.Products ?? new List<Product>()
-            };
+                ExpectedTotal = order.InvoicePrice,
+                AllowDigital = false,
+                CustomerName = order.CustomerName,
+                Email = order.Email,
+                Phone = order.Phone,
+                AddressLine = order.AddressLine,
+                City = order.City,
+                State = order.State,
+                PostalCode = order.PostalCode,
+                Country = order.Country,
+                PaymentMethod = "API",
+                Lines = products.Select(p => new OrderLineRequest(p.ProductCode, p.Quantity, p.Price)).ToList()
+            });
 
-            return Json(newOrder);
+            if (!result.Succeeded)
+            {
+                return BadRequest(ErrorText(result.Errors));
+            }
+
+            return Json(result.Value);
         }
+
+        private static string ErrorText(IEnumerable<string> errors) => string.Join("\n", errors.Distinct());
     }
 }

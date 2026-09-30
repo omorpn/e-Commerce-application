@@ -1,0 +1,94 @@
+@model CartViewModel
+@{
+    ViewData["Title"] = "Shopping Cart";
+}
+<div class="row g-4 mt-1">
+    <div class="col-lg-9">
+        <div class="panel">
+            <h1 class="h3">Shopping Cart</h1>
+            @if (Model.IsEmpty)
+            {
+                <div class="text-center py-5">
+                    <i class="bi bi-cart-x display-4 text-secondary"></i>
+                    <h2 class="h5 mt-3">Your cart is empty</h2>
+                    <p class="text-secondary">Browse products and ebooks and add something you like.</p>
+                    <a class="btn btn-cart" asp-controller="Products" asp-action="Index">Continue shopping</a>
+                </div>
+            }
+            else
+            {
+                <div class="text-end small text-secondary border-bottom pb-1">Price</div>
+                @foreach (var line in Model.Lines)
+                {
+                    var p = line.Product;
+                    <div class="cart-line" data-testid="cart-line">
+                        <a class="cart-thumb" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">
+                            <partial name="_ProductImage" model="p" />
+                        </a>
+                        <div class="flex-grow-1">
+                            <a class="fw-semibold text-body" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">@p.Name</a>
+                            @if (p.IsEbook)
+                            {
+                                <div class="small text-secondary">eBook by @p.AuthorName · Instant download</div>
+                            }
+                            else if (line.Problem == null)
+                            {
+                                <div class="small text-success">In Stock</div>
+                            }
+                            @if (line.Problem != null)
+                            {
+                                <div class="small text-danger fw-semibold"><i class="bi bi-exclamation-circle"></i> @line.Problem</div>
+                            }
+                            <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
+                                @if (!p.IsEbook && p.Stock > 0)
+                                {
+                                    <form asp-action="Update" method="post" class="d-flex align-items-center gap-1">
+                                        <input type="hidden" name="productCode" value="@p.ProductCode" />
+                                        <label class="small" for="qty-@p.ProductCode">Qty:</label>
+                                        <select id="qty-@p.ProductCode" name="quantity" class="form-select form-select-sm qty-select" onchange="this.form.submit()">
+                                            @for (var i = 1; i <= Math.Min(Math.Max(p.Stock, line.Quantity), CartService.MaxQuantityPerLine); i++)
+                                            {
+                                                <option value="@i" selected="@(i == line.Quantity)">@i</option>
+                                            }
+                                        </select>
+                                        <noscript><button class="btn btn-sm btn-light border">Update</button></noscript>
+                                    </form>
+                                    <span class="text-secondary">|</span>
+                                }
+                                <form asp-action="Remove" method="post">
+                                    <input type="hidden" name="productCode" value="@p.ProductCode" />
+                                    <button class="btn btn-link btn-sm p-0" type="submit">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="fw-bold text-nowrap">@ViewHelpers.Price(line.LineTotal)</div>
+                    </div>
+                }
+                <div class="text-end fs-5 mt-2">
+                    Subtotal (@Model.ItemCount item@(Model.ItemCount == 1 ? "" : "s")): <strong>@ViewHelpers.Currency(Model.Subtotal)</strong>
+                </div>
+            }
+        </div>
+    </div>
+    @if (!Model.IsEmpty)
+    {
+        <div class="col-lg-3">
+            <div class="panel">
+                @if (Model.Subtotal >= 25 && Model.HasPhysical)
+                {
+                    <div class="small text-success mb-2"><i class="bi bi-check-circle-fill"></i> Your order qualifies for FREE delivery.</div>
+                }
+                <div class="fs-5 mb-3">Subtotal (@Model.ItemCount item@(Model.ItemCount == 1 ? "" : "s")): <strong>@ViewHelpers.Currency(Model.Subtotal)</strong></div>
+                @if (Model.HasProblems)
+                {
+                    <div class="alert alert-warning small">Remove or fix the highlighted items to continue.</div>
+                    <button class="btn btn-buy w-100" disabled>Proceed to checkout</button>
+                }
+                else
+                {
+                    <a class="btn btn-buy w-100" asp-controller="Checkout" asp-action="Index" data-testid="checkout">Proceed to checkout</a>
+                }
+            </div>
+        </div>
+    }
+</div>

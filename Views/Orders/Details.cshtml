@@ -1,0 +1,102 @@
+@model Order
+@{
+    ViewData["Title"] = $"Order #{Model.OrderNo}";
+    var placed = ViewData["Placed"] as bool? == true;
+    var steps = new[] { OrderStatus.Pending, OrderStatus.Processing, OrderStatus.Shipped, OrderStatus.Delivered };
+    var stepIndex = Array.IndexOf(steps, Model.Status);
+}
+@if (placed)
+{
+    <div class="panel border-success mt-3" data-testid="order-confirmation">
+        <h1 class="h4 text-success"><i class="bi bi-check-circle-fill"></i> Order placed, thank you!</h1>
+        <p class="mb-0">
+            Your order number is <strong>#@Model.OrderNo</strong>.
+            @if (Model.Products.Any(i => i.ProductType == ProductType.Ebook))
+            {
+                <span>Your ebooks are ready in <a asp-controller="Library" asp-action="Index">your library</a>.</span>
+            }
+            @if (Model.HasPhysicalItems)
+            {
+                <span>We'll let you know when your items ship.</span>
+            }
+        </p>
+    </div>
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mt-3">
+    <div>
+        <a asp-action="Index" class="small"><i class="bi bi-chevron-left"></i> Your orders</a>
+        <h1 class="h3 mb-0">Order details</h1>
+        <div class="small text-secondary">Ordered on @Model.OrderDate.ToString("MMMM d, yyyy") · Order # @Model.OrderNo</div>
+    </div>
+    @if (OrderService.CustomerCanCancel(Model))
+    {
+        <form asp-action="Cancel" asp-route-id="@Model.OrderNo" method="post" onsubmit="return confirm('Cancel this order?');">
+            <button class="btn btn-outline-danger btn-sm" type="submit">Cancel order</button>
+        </form>
+    }
+</div>
+
+<div class="panel mt-3">
+    <div class="row g-3 small">
+        @if (Model.HasPhysicalItems)
+        {
+            <div class="col-md-4">
+                <h2 class="h6">Shipping address</h2>
+                <div>@Model.CustomerName</div>
+                <div>@Model.AddressLine</div>
+                <div>@Model.City@(string.IsNullOrEmpty(Model.State) ? "" : ", " + Model.State) @Model.PostalCode</div>
+                <div>@Model.Country</div>
+            </div>
+        }
+        <div class="col-md-4">
+            <h2 class="h6">Payment method</h2>
+            <div>@(Model.PaymentMethod ?? "-")</div>
+        </div>
+        <div class="col-md-4">
+            <h2 class="h6">Order summary</h2>
+            <div class="d-flex justify-content-between"><span>Item(s) subtotal:</span><span>@ViewHelpers.Currency(Model.InvoicePrice)</span></div>
+            <div class="d-flex justify-content-between"><span>Shipping:</span><span>@ViewHelpers.Currency(0)</span></div>
+            <div class="d-flex justify-content-between fw-bold"><span>Grand total:</span><span>@ViewHelpers.Currency(Model.InvoicePrice)</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="panel mt-3">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <h2 class="h5 mb-0">Status</h2>
+        <span class="badge @ViewHelpers.StatusBadge(Model.Status)" data-testid="order-status">@Model.Status</span>
+    </div>
+    @if (Model.HasPhysicalItems && Model.Status != OrderStatus.Cancelled)
+    {
+        <ol class="tracker">
+            @for (var i = 0; i < steps.Length; i++)
+            {
+                <li class="@(i <= stepIndex ? "done" : "")">@steps[i]</li>
+            }
+        </ol>
+    }
+    @foreach (var item in Model.Products)
+    {
+        <div class="d-flex justify-content-between align-items-center border-top py-2">
+            <div>
+                <a class="fw-semibold" asp-controller="Products" asp-action="Details" asp-route-id="@item.ProductCode">@item.ProductName</a>
+                <div class="small text-secondary">
+                    @if (item.ProductType == ProductType.Ebook)
+                    {
+                        <span>eBook</span>
+                        @if (Model.Status != OrderStatus.Cancelled)
+                        {
+                            <span>· <a asp-controller="Library" asp-action="Download" asp-route-id="@item.ProductCode">Download</a></span>
+                        }
+                    }
+                    else
+                    {
+                        <span>Qty: @item.Quantity × @ViewHelpers.Currency(item.Price)</span>
+                    }
+                </div>
+            </div>
+            <div class="fw-bold">@ViewHelpers.Price(item.LineTotal)</div>
+        </div>
+    }
+</div>

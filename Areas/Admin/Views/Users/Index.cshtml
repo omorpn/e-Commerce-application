@@ -1,0 +1,35 @@
+@model List<AdminUserRow>
+@{
+    ViewData["Title"] = "Users";
+}
+<partial name="_AdminNav" />
+<div class="panel mt-3">
+    <h1 class="h4">Users</h1>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Email</th><th>Name</th><th>Joined</th><th>Roles</th><th class="text-end">Orders</th><th class="text-end">Titles</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var row in Model)
+                {
+                    <tr>
+                        <td>@row.User.Email</td>
+                        <td>@(row.User.PenName ?? row.User.DisplayName)</td>
+                        <td>@row.User.CreatedAt.ToString("MMM d, yyyy")</td>
+                        <td>
+                            @if (row.IsAdmin) { <span class="badge text-bg-danger">Admin</span> }
+                            @if (row.IsAuthor) { <span class="badge text-bg-info">Author</span> }
+                            @if (!row.IsAdmin && !row.IsAuthor) { <span class="badge text-bg-light border">Customer</span> }
+                        </td>
+                        <td class="text-end">@row.OrderCount</td>
+                        <td class="text-end">@row.TitleCount</td>
+                        <td class="text-end">
+                            <form asp-action="ToggleAdmin" asp-route-id="@row.User.Id" method="post">
+                                <button class="btn btn-light border btn-sm" type="submit">@(row.IsAdmin ? "Remove admin" : "Make admin")</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

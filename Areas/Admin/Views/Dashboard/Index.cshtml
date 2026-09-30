@@ -1,0 +1,57 @@
+@model AdminDashboardViewModel
+@{
+    ViewData["Title"] = "Admin dashboard";
+}
+<partial name="_AdminNav" />
+<div class="stat-grid mt-3">
+    <div class="stat"><div class="stat-label">Revenue</div><div class="stat-value">@ViewHelpers.Currency(Model.Revenue)</div></div>
+    <div class="stat"><div class="stat-label">Orders</div><div class="stat-value">@Model.OrderCount</div><div class="small text-warning-emphasis">@Model.PendingOrders awaiting fulfilment</div></div>
+    <div class="stat"><div class="stat-label">Products</div><div class="stat-value">@Model.ProductCount</div><div class="small text-danger">@Model.LowStockCount low on stock</div></div>
+    <div class="stat"><div class="stat-label">eBooks</div><div class="stat-value">@Model.EbookCount</div></div>
+    <div class="stat"><div class="stat-label">Customers</div><div class="stat-value">@Model.UserCount</div><div class="small text-secondary">@Model.AuthorCount authors</div></div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-lg-8">
+        <div class="panel h-100">
+            <div class="d-flex justify-content-between"><h2 class="h5">Recent orders</h2><a asp-controller="Orders" asp-action="Index" class="small">All orders</a></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>Order</th><th>Date</th><th>Customer</th><th class="text-end">Total</th><th>Status</th></tr></thead>
+                    <tbody>
+                        @foreach (var order in Model.RecentOrders)
+                        {
+                            <tr>
+                                <td><a asp-controller="Orders" asp-action="Details" asp-route-id="@order.OrderNo">#@order.OrderNo</a></td>
+                                <td>@order.OrderDate.ToString("MMM d, HH:mm")</td>
+                                <td>@(order.CustomerName ?? "API order")</td>
+                                <td class="text-end">@ViewHelpers.Currency(order.InvoicePrice)</td>
+                                <td><span class="badge @ViewHelpers.StatusBadge(order.Status)">@order.Status</span></td>
+                            </tr>
+                        }
+                        @if (Model.RecentOrders.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-secondary">No orders yet.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="panel h-100">
+            <h2 class="h5">Low stock</h2>
+            @foreach (var p in Model.LowStock)
+            {
+                <div class="d-flex justify-content-between border-top py-2 small">
+                    <a asp-controller="Products" asp-action="Edit" asp-route-id="@p.ProductCode">@p.Name</a>
+                    <span class="badge @(p.Stock == 0 ? "text-bg-danger" : "text-bg-warning")">@p.Stock left</span>
+                </div>
+            }
+            @if (Model.LowStock.Count == 0)
+            {
+                <p class="small text-secondary">All products are well stocked.</p>
+            }
+        </div>
+    </div>
+</div>

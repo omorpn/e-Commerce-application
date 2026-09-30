@@ -1,0 +1,17 @@
+@{
+    var code = ViewData["StatusCode"] as int? ?? 500;
+    var (title, message) = code switch
+    {
+        404 => ("Page not found", "We couldn't find the page you were looking for."),
+        403 => ("Access denied", "You don't have permission to view this page."),
+        400 => ("Bad request", "Something about that request wasn't right."),
+        _ => ("Something went wrong", "An unexpected error occurred. Please try again.")
+    };
+    ViewData["Title"] = title;
+}
+<div class="text-center py-5">
+    <div class="display-1 fw-bold text-secondary">@code</div>
+    <h1 class="h3">@title</h1>
+    <p class="text-secondary">@message</p>
+    <a class="btn btn-buy" asp-area="" asp-controller="Home" asp-action="Index">Continue shopping</a>
+</div>

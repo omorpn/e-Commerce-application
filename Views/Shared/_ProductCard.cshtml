@@ -1,0 +1,44 @@
+@model ProductSummary
+@{
+    var p = Model.Product;
+}
+<div class="product-card h-100">
+    <a class="product-card-media" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode" tabindex="-1">
+        <partial name="_ProductImage" model="p" />
+        @if (p.IsEbook)
+        {
+            <span class="badge badge-format">eBook</span>
+        }
+    </a>
+    <div class="product-card-body">
+        <a class="product-card-title" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">@p.Name</a>
+        @if (p.IsEbook && p.AuthorName != null)
+        {
+            <div class="small text-secondary">by @p.AuthorName</div>
+        }
+        <div class="small">
+            <partial name="_Stars" model="Model.Rating" />
+            <span class="text-link">@Model.ReviewCount</span>
+        </div>
+        <div class="price @(p.Price == 0 ? "price-free" : "")">@ViewHelpers.Price(p.Price)</div>
+        @if (!p.IsEbook)
+        {
+            if (p.Stock == 0)
+            {
+                <div class="small text-danger">Currently unavailable</div>
+            }
+            else if (p.Stock <= 5)
+            {
+                <div class="small text-danger">Only @p.Stock left in stock</div>
+            }
+            else
+            {
+                <div class="small text-success">In stock</div>
+            }
+        }
+        else
+        {
+            <div class="small text-secondary">Instant download</div>
+        }
+    </div>
+</div>

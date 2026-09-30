@@ -1,0 +1,50 @@
+@model List<Order>
+@{
+    ViewData["Title"] = "Your Orders";
+}
+<h1 class="h3 mt-3">Your Orders</h1>
+@if (Model.Count == 0)
+{
+    <div class="panel text-center py-5">
+        <i class="bi bi-box-seam display-5 text-secondary"></i>
+        <h2 class="h5 mt-3">You haven't placed any orders yet</h2>
+        <a class="btn btn-cart mt-2" asp-controller="Products" asp-action="Index">Start shopping</a>
+    </div>
+}
+@foreach (var order in Model)
+{
+    <div class="order-card mb-3">
+        <div class="order-card-head">
+            <div><div class="label">Order placed</div>@order.OrderDate.ToString("MMMM d, yyyy")</div>
+            <div><div class="label">Total</div>@ViewHelpers.Currency(order.InvoicePrice)</div>
+            @if (order.CustomerName != null && order.HasPhysicalItems)
+            {
+                <div class="d-none d-md-block"><div class="label">Ship to</div>@order.CustomerName</div>
+            }
+            <div class="ms-auto text-end">
+                <div class="label">Order # @order.OrderNo</div>
+                <a asp-action="Details" asp-route-id="@order.OrderNo">View order details</a>
+            </div>
+        </div>
+        <div class="order-card-body">
+            <div class="mb-2"><span class="badge @ViewHelpers.StatusBadge(order.Status)">@order.Status</span></div>
+            @foreach (var item in order.Products)
+            {
+                <div class="d-flex justify-content-between small py-1">
+                    <span>
+                        <a asp-controller="Products" asp-action="Details" asp-route-id="@item.ProductCode">@item.ProductName</a>
+                        @if (item.ProductType == ProductType.Ebook)
+                        {
+                            <span class="badge text-bg-dark ms-1">eBook</span>
+                        }
+                        else
+                        {
+                            <span class="text-secondary">× @item.Quantity</span>
+                        }
+                    </span>
+                    <span>@ViewHelpers.Price(item.LineTotal)</span>
+                </div>
+            }
+        </div>
+    </div>
+}

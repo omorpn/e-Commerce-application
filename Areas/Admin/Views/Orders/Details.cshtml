@@ -1,0 +1,68 @@
+@model Order
+@{
+    ViewData["Title"] = $"Order #{Model.OrderNo}";
+}
+<partial name="_AdminNav" />
+<div class="row g-3 mt-1">
+    <div class="col-lg-8">
+        <div class="panel">
+            <a asp-action="Index" class="small"><i class="bi bi-chevron-left"></i> Orders</a>
+            <h1 class="h4">Order #@Model.OrderNo <span class="badge @ViewHelpers.StatusBadge(Model.Status) fs-6 align-middle">@Model.Status</span></h1>
+            <div class="small text-secondary mb-3">Placed @Model.OrderDate.ToString("MMMM d, yyyy HH:mm") UTC · Last updated @Model.UpdatedAt.ToString("MMM d, HH:mm")</div>
+            <table class="table">
+                <thead><tr><th>Item</th><th>Type</th><th class="text-end">Unit</th><th class="text-end">Qty</th><th class="text-end">Total</th></tr></thead>
+                <tbody>
+                    @foreach (var item in Model.Products)
+                    {
+                        <tr>
+                            <td><a asp-area="" asp-controller="Products" asp-action="Details" asp-route-id="@item.ProductCode">@item.ProductName</a><div class="small text-secondary">#@item.ProductCode</div></td>
+                            <td>@item.ProductType</td>
+                            <td class="text-end">@ViewHelpers.Currency(item.Price)</td>
+                            <td class="text-end">@item.Quantity</td>
+                            <td class="text-end">@ViewHelpers.Currency(item.LineTotal)</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot><tr><th colspan="4" class="text-end">Total</th><th class="text-end">@ViewHelpers.Currency(Model.InvoicePrice)</th></tr></tfoot>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="panel mb-3">
+            <h2 class="h6">Update status</h2>
+            @if (Model.Status == OrderStatus.Cancelled)
+            {
+                <p class="small text-secondary mb-0">This order was cancelled. Stock was returned and ebook access revoked.</p>
+            }
+            else
+            {
+                <form asp-action="UpdateStatus" asp-route-id="@Model.OrderNo" method="post" class="d-flex gap-2">
+                    <select name="status" class="form-select form-select-sm">
+                        @foreach (var s in Enum.GetValues<OrderStatus>())
+                        {
+                            <option value="@s" selected="@(Model.Status == s)">@s</option>
+                        }
+                    </select>
+                    <button class="btn btn-buy btn-sm" type="submit">Update</button>
+                </form>
+                <div class="form-text">Cancelling returns stock and revokes ebook access from this order.</div>
+            }
+        </div>
+        <div class="panel small">
+            <h2 class="h6">Customer</h2>
+            <div>@(Model.CustomerName ?? "-")</div>
+            <div>@Model.Email</div>
+            <div>@Model.Phone</div>
+            <div class="text-secondary">@(Model.User != null ? "Account: " + Model.User.Email : "Guest / API order")</div>
+            @if (Model.AddressLine != null)
+            {
+                <h2 class="h6 mt-3">Ship to</h2>
+                <div>@Model.AddressLine</div>
+                <div>@Model.City@(string.IsNullOrEmpty(Model.State) ? "" : ", " + Model.State) @Model.PostalCode</div>
+                <div>@Model.Country</div>
+            }
+            <h2 class="h6 mt-3">Payment</h2>
+            <div>@(Model.PaymentMethod ?? "-")</div>
+        </div>
+    </div>
+</div>

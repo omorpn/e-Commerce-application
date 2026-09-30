@@ -1,0 +1,14 @@
+@{
+    var current = ViewContext.RouteData.Values["controller"]?.ToString();
+    string Active(string name) => current == name ? "active" : "";
+}
+<div class="admin-bar mt-3">
+    <div class="fw-semibold"><i class="bi bi-speedometer2"></i> Store admin</div>
+    <ul class="nav nav-pills">
+        <li class="nav-item"><a class="nav-link @Active("Dashboard")" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link @Active("Orders")" asp-area="Admin" asp-controller="Orders" asp-action="Index">Orders</a></li>
+        <li class="nav-item"><a class="nav-link @Active("Products")" asp-area="Admin" asp-controller="Products" asp-action="Index">Products</a></li>
+        <li class="nav-item"><a class="nav-link @Active("Ebooks")" asp-area="Admin" asp-controller="Ebooks" asp-action="Index">eBooks</a></li>
+        <li class="nav-item"><a class="nav-link @Active("Users")" asp-area="Admin" asp-controller="Users" asp-action="Index">Users</a></li>
+    </ul>
+</div>

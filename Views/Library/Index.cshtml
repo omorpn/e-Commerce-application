@@ -1,0 +1,42 @@
+@model List<LibraryEntry>
+@{
+    ViewData["Title"] = "Your Library";
+}
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <h1 class="h3 mb-0">Your Library</h1>
+    <a class="btn btn-light border btn-sm" asp-controller="Products" asp-action="Index" asp-route-dept="ebooks">Browse the eBook Store</a>
+</div>
+@if (Model.Count == 0)
+{
+    <div class="panel text-center py-5 mt-3">
+        <i class="bi bi-book display-5 text-secondary"></i>
+        <h2 class="h5 mt-3">Your library is empty</h2>
+        <p class="text-secondary">Ebooks you buy or claim for free appear here, ready to read or download.</p>
+        <a class="btn btn-cart" asp-controller="Products" asp-action="Index" asp-route-dept="ebooks" asp-route-maxPrice="0">Find a free ebook</a>
+    </div>
+}
+else
+{
+    <div class="library-grid mt-3">
+        @foreach (var entry in Model)
+        {
+            var p = entry.Product!;
+            var isPdf = p.FileContentType == FileSignatures.Pdf.ContentType;
+            <div class="library-item" data-testid="library-item">
+                <a asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode" class="library-cover">
+                    <partial name="_ProductImage" model="p" />
+                </a>
+                <div class="fw-semibold mt-2">@p.Name</div>
+                <div class="small text-secondary">@p.AuthorName</div>
+                <div class="small text-secondary">Acquired @entry.AcquiredAt.ToString("MMM d, yyyy")</div>
+                <div class="d-flex gap-2 mt-2">
+                    @if (isPdf)
+                    {
+                        <a class="btn btn-buy btn-sm" asp-action="Download" asp-route-id="@p.ProductCode" asp-route-read="true" target="_blank">Read</a>
+                    }
+                    <a class="btn btn-light border btn-sm" asp-action="Download" asp-route-id="@p.ProductCode"><i class="bi bi-download"></i> @(isPdf ? "PDF" : "EPUB")</a>
+                </div>
+            </div>
+        }
+    </div>
+}

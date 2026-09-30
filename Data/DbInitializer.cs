@@ -41,7 +41,7 @@ namespace e_Commerce_application.Data
         // those builds can't be migrated, so it is recreated (it only holds sample data).
         private static async Task ResetLegacyDevelopmentDatabaseAsync(AppDbContext db, IHostEnvironment env, ILogger logger)
         {
-            if (!await db.Database.CanConnectAsync() || (await db.Database.GetAppliedMigrationsAsync()).Any())
+            if (!db.Database.IsSqlite() || !await db.Database.CanConnectAsync() || (await db.Database.GetAppliedMigrationsAsync()).Any())
             {
                 return;
             }

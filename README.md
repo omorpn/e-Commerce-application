@@ -40,18 +40,21 @@ An ASP.NET Core 8 MVC marketplace. Customers buy physical products, book service
 
 **Accounts**: registration, sign in, password change, two-factor authentication and personal data download/delete, from ASP.NET Core Identity.
 
-## Get a public link (deploy)
+## Get a public link (free, no credit card)
 
-The app ships with a `Dockerfile` and a Render Blueprint (`render.yaml`).
+The app runs on [Render](https://render.com)'s free plan with a free PostgreSQL database from [Neon](https://neon.tech). Neither asks for a card. All data, including uploaded files and sign-in keys, lives in the database, so nothing is lost when the free service sleeps or restarts.
 
-1. Merge this code into the `master` branch.
-2. Click **Deploy to Render** above and sign in to Render (GitHub sign-in works).
-3. Enter an admin email and password when asked. The password needs 8+ characters with upper and lower case letters, a digit and a symbol, e.g. `MyShop#2026`.
-4. Click **Apply**. After the build (a few minutes) your store is live at `https://shopnest-XXXX.onrender.com`.
+1. **Create the database.** Sign up at [neon.tech](https://neon.tech) (GitHub or Google sign-in works) and create a project. On the dashboard click **Connect** and copy the connection string. It looks like
+   `postgresql://neondb_owner:xxxx@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`
+2. **Deploy the app.** Click **Deploy to Render** above and sign in to Render with GitHub. When asked, fill in:
+   - `ConnectionStrings__Default`: the Neon connection string from step 1
+   - `Admin__Email`: the email you'll sign in with as admin
+   - `Admin__Password`: 8+ characters with upper and lower case letters, a digit and a symbol, e.g. `MyShop#2026`
+3. Click **Apply**. After the first build (a few minutes) your store is live at `https://shopnest-XXXX.onrender.com`. Sign in with the admin details to open `/Admin`.
 
-The blueprint uses Render's **Starter** plan with a 1 GB persistent disk, so accounts, orders and uploads survive restarts. To try it for free instead, change `plan: starter` to `plan: free` and delete the `disk:` block in `render.yaml`; the free plan has no disk, so all data resets whenever the service restarts or sleeps.
+Free plan limits: the service sleeps after 15 minutes without visitors and takes about a minute to wake on the next visit; Neon's free database holds 0.5 GB. Uploads are limited to 25 MB per file when stored in the database (`Storage__MaxFileMB` changes this, up to 100). Upgrading the Render plan removes the sleep; nothing else changes.
 
-The same image runs anywhere that runs Docker (Railway, Fly.io, Azure App Service, a VPS). Mount a persistent volume at `/data` and set `Admin__Email` / `Admin__Password`. The app listens on `$PORT` when set, otherwise 8080.
+The same Docker image runs on any container host (Railway, Fly.io, Azure App Service, a VPS). Point `ConnectionStrings__Default` at PostgreSQL, or leave the default to use SQLite under `/data` with a persistent volume mounted there. The app listens on `$PORT` when set, otherwise 8080.
 
 ## Running locally
 
@@ -75,9 +78,10 @@ Create a normal account with **Create account** to shop or sell.
 
 | Setting | Default | Purpose |
 |---|---|---|
-| `ConnectionStrings:Default` | `Data Source=ecommerce.db` | SQLite database file |
-| `Storage:Root` | `App_Data/storage` | Uploaded files (downloads, covers, images) |
-| `DataProtection:KeysPath` | empty | Folder for sign-in encryption keys; set it in production so logins survive restarts |
+| `ConnectionStrings:Default` | `Data Source=ecommerce.db` | SQLite file, or a PostgreSQL connection string / `postgres://` URL |
+| `Storage:Provider` | `Database` with PostgreSQL, `FileSystem` with SQLite | Where uploads (downloads, covers, images) are kept |
+| `Storage:Root` | `App_Data/storage` | Upload folder when using `FileSystem` |
+| `Storage:MaxFileMB` | 25 (database) / 100 (file system) | Largest upload allowed |
 | `Publishing:SellerRate` | `0.85` | Seller share of each sale |
 | `Publishing:RoyaltyRate` | `0.70` | Author share of each ebook sale |
 | `SeedSampleData` | `true` | Seed the sample catalog when the database is empty |
@@ -87,11 +91,12 @@ Environment variables use double underscores, e.g. `Admin__Email`.
 
 ## Database
 
-The schema is managed with EF Core migrations (`Data/Migrations`) and applied automatically at startup. After changing the entity model, add a migration:
+SQLite and PostgreSQL are both supported. The schema is managed with EF Core migrations, one set per database (`Data/Migrations/Sqlite`, `Data/Migrations/Postgres`), applied automatically at startup. Sign-in keys are stored in the database so logins survive restarts. After changing the entity model, add a migration for both:
 
 ```bash
 dotnet tool restore
-dotnet dotnet-ef migrations add <Name> --project "e-Commerce application.csproj" -o Data/Migrations
+dotnet dotnet-ef migrations add <Name> --project "e-Commerce application.csproj" --context SqliteAppDbContext -o Data/Migrations/Sqlite
+dotnet dotnet-ef migrations add <Name> --project "e-Commerce application.csproj" --context PostgresAppDbContext -o Data/Migrations/Postgres
 ```
 
 ## JSON API
@@ -117,6 +122,8 @@ Read-only catalog: `GET /api/products?q=&type=Physical|Service|Digital|Ebook&cat
 
 ```bash
 dotnet test
+# against PostgreSQL instead of SQLite:
+TEST_POSTGRES="Host=localhost;Username=me;Password=secret" dotnet test
 ```
 
 `tests/ECommerce.Tests` runs the real app against a temporary database: the order API, checkout, service booking and fulfilment, digital delivery, library access control, publishing, earnings, moderation, wish list, deals, admin order management and upload validation.

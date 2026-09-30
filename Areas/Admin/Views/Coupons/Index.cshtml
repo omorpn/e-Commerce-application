@@ -1,0 +1,43 @@
+@model List<Coupon>
+@{
+    ViewData["Title"] = "Coupons";
+}
+<partial name="_AdminNav" />
+<div class="panel mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="h4 mb-0">Coupons</h1>
+            <div class="small text-secondary">Discount codes customers enter in their cart. The store covers the discount; sellers are paid in full.</div>
+        </div>
+        <a class="btn btn-buy btn-sm" asp-action="Create"><i class="bi bi-plus-lg"></i> New coupon</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th>Code</th><th>Discount</th><th>Minimum order</th><th>Expires</th><th class="text-end">Used</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+                @foreach (var c in Model)
+                {
+                    var expired = c.ExpiresAt.HasValue && c.ExpiresAt < DateTime.UtcNow;
+                    <tr>
+                        <td><strong>@c.Code</strong><div class="small text-secondary">@c.Description</div></td>
+                        <td>@(c.PercentOff.HasValue ? $"{c.PercentOff}% off" : ViewHelpers.Currency(c.AmountOff ?? 0) + " off")</td>
+                        <td>@(c.MinSubtotal.HasValue ? ViewHelpers.Currency(c.MinSubtotal.Value) : "-")</td>
+                        <td>@(c.ExpiresAt?.ToString("MMM d, yyyy") ?? "Never")</td>
+                        <td class="text-end">@c.UsedCount@(c.MaxUses.HasValue ? $" / {c.MaxUses}" : "")</td>
+                        <td><span class="badge @(c.Active && !expired ? "text-bg-success" : "text-bg-secondary")">@(expired ? "Expired" : c.Active ? "Active" : "Off")</span></td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-light border btn-sm" asp-action="Edit" asp-route-id="@c.Id">Edit</a>
+                            <form asp-action="Delete" asp-route-id="@c.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this coupon?');">
+                                <button class="btn btn-outline-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-secondary">No coupons yet.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -75,9 +75,9 @@
                 <input type="hidden" name="category" value="@q.Category" />
                 <input type="hidden" name="sort" value="@q.Sort" />
                 <div class="input-group input-group-sm">
-                    <span class="input-group-text">$</span>
-                    <input type="number" min="0" step="0.01" name="minPrice" value="@q.MinPrice" class="form-control" placeholder="Min" aria-label="Minimum price" />
-                    <input type="number" min="0" step="0.01" name="maxPrice" value="@q.MaxPrice" class="form-control" placeholder="Max" aria-label="Maximum price" />
+                    <span class="input-group-text">@ViewHelpers.CurrencySymbol</span>
+                    <input type="number" min="0" step="1" name="minPrice" value="@q.MinPrice" class="form-control" placeholder="Min" aria-label="Minimum price" />
+                    <input type="number" min="0" step="1" name="maxPrice" value="@q.MaxPrice" class="form-control" placeholder="Max" aria-label="Maximum price" />
                     <button class="btn btn-light border" type="submit">Go</button>
                 </div>
             </form>

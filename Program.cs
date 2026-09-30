@@ -47,6 +47,9 @@ builder.Services.AddControllersWithViews(options =>
     })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddRazorPages();
+// Output ₦ and other non-Latin characters as-is instead of as HTML character references.
+builder.Services.Configure<Microsoft.Extensions.WebEncoders.WebEncoderOptions>(options =>
+    options.TextEncoderSettings = new System.Text.Encodings.Web.TextEncoderSettings(System.Text.Unicode.UnicodeRanges.All));
 builder.Services.AddHealthChecks();
 
 builder.Services.AddDistributedMemoryCache();
@@ -59,6 +62,10 @@ builder.Services.AddSession(options =>
 
 builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = FileSignatures.MaxUploadRequestBytes);
 builder.Services.Configure<PublishingOptions>(builder.Configuration.GetSection("Publishing"));
+builder.Services.Configure<ShopSettings>(builder.Configuration.GetSection("Store"));
+builder.Services.Configure<ShippingOptions>(builder.Configuration.GetSection("Shipping"));
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.Configure<PaystackOptions>(builder.Configuration.GetSection("Payments:Paystack"));
 
 // The app usually runs behind a TLS-terminating proxy in production.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -73,8 +80,14 @@ builder.Services.AddFileStorage(builder.Configuration, usesPostgres);
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<ListingService>();
+builder.Services.AddScoped<NotificationService>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Identity.UI.Services.IEmailSender, SmtpEmailSender>();
+builder.Services.AddHttpClient<IPaymentGateway, PaystackGateway>(client => client.Timeout = TimeSpan.FromSeconds(30));
+builder.Services.AddHostedService<UnpaidOrderCleanup>();
 
 var app = builder.Build();
+
+ViewHelpers.CurrencySymbol = app.Configuration["Store:CurrencySymbol"] ?? ViewHelpers.CurrencySymbol;
 
 app.UseForwardedHeaders();
 

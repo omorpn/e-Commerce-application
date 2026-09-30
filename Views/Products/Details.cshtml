@@ -1,5 +1,8 @@
 @model ProductDetailsViewModel
+@inject Microsoft.Extensions.Options.IOptions<ShippingOptions> ShippingSettings
 @{
+    var shipping = ShippingSettings.Value;
+    var stateFees = ShippingOptions.NigerianStates.ToDictionary(s => s, s => new { fee = shipping.FeeFor(s, 0), eta = shipping.DeliveryTimeFor(s) });
     var p = Model.Product;
     ViewData["Title"] = p.Name;
     var signedIn = User.Identity?.IsAuthenticated == true;
@@ -67,7 +70,19 @@
         <hr />
         @if (p.IsDeal)
         {
-            <div><span class="badge badge-deal-lg">-@p.DiscountPercent%</span> <span class="small text-danger fw-semibold">Limited time deal</span></div>
+            <div class="deal-line">
+                <span class="badge badge-deal-lg">-@p.DiscountPercent%</span>
+                @if (p.DealEndsAt > DateTime.UtcNow)
+                {
+                    <span class="countdown countdown-inline" data-countdown="@p.DealEndsAt.Value.ToString("o")">
+                        <i class="bi bi-lightning-charge-fill"></i> Flash sale ends in <b data-part="d">00</b>d <b data-part="h">00</b>h <b data-part="m">00</b>m <b data-part="s">00</b>s
+                    </span>
+                }
+                else
+                {
+                    <span class="small text-danger fw-semibold">Limited time deal</span>
+                }
+            </div>
         }
         <div class="price-lg @(p.Price == 0 ? "price-free" : "")">@ViewHelpers.Price(p.Price)@(p.IsService ? " per session" : "")</div>
         @if (p.IsDeal)
@@ -77,7 +92,7 @@
         @switch (p.Type)
         {
             case ProductType.Physical:
-                <div class="small text-secondary">FREE delivery on this item. Returns accepted within 30 days.</div>
+                <div class="small text-secondary">Genuine product. Returns accepted within 7 days of delivery.</div>
                 break;
             case ProductType.Service:
                 <div class="small text-secondary">Choose your date at checkout. The provider confirms and completes the booking.</div>
@@ -255,6 +270,37 @@
                     </button>
                 </form>
             }
+
+            @if (p.IsPhysical)
+            {
+                <div class="delivery-box" data-delivery='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(stateFees))' data-free-over="@shipping.FreeShippingOver" data-price="@p.Price.ToString(System.Globalization.CultureInfo.InvariantCulture)">
+                    <label class="small fw-semibold" for="deliver-to"><i class="bi bi-geo-alt"></i> Deliver to</label>
+                    <select id="deliver-to" class="form-select form-select-sm">
+                        @foreach (var state in ShippingOptions.NigerianStates)
+                        {
+                            <option value="@state" selected="@(state == "Lagos")">@state</option>
+                        }
+                    </select>
+                    <div class="small mt-1" data-delivery-result></div>
+                </div>
+            }
+
+            @if (!Model.IsSeller)
+            {
+                @if (signedIn)
+                {
+                    <form asp-controller="Messages" asp-action="Start" method="post" class="mt-2">
+                        <input type="hidden" name="productCode" value="@p.ProductCode" />
+                        <button class="btn btn-light border btn-sm w-100" type="submit" data-testid="message-seller"><i class="bi bi-chat-dots"></i> @(p.SellerId == null ? "Ask a question" : "Message the seller")</button>
+                    </form>
+                }
+                else
+                {
+                    <a class="btn btn-light border btn-sm w-100 mt-2" asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@returnUrl"><i class="bi bi-chat-dots"></i> Sign in to ask a question</a>
+                }
+            }
+            <a class="btn btn-light border btn-sm w-100 mt-2" target="_blank" rel="noopener"
+               href="https://wa.me/?text=@Uri.EscapeDataString(p.Name + " - " + Context.Request.Scheme + "://" + Context.Request.Host + returnUrl)"><i class="bi bi-whatsapp text-success"></i> Share on WhatsApp</a>
 
             <hr />
             <div class="small text-secondary">

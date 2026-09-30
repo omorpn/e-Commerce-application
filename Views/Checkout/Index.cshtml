@@ -1,15 +1,22 @@
 @model CheckoutViewModel
+@inject Microsoft.Extensions.Options.IOptions<ShippingOptions> ShippingSettings
 @{
     ViewData["Title"] = "Checkout";
     var cart = Model.Cart;
+    var shipping = ShippingSettings.Value;
+    var fees = ShippingOptions.NigerianStates.ToDictionary(s => s, s => shipping.FeeFor(s, cart.Subtotal));
+    var step = 1;
 }
 <h1 class="h3 mt-3">Checkout <span class="text-secondary fs-6">(@cart.ItemCount item@(cart.ItemCount == 1 ? "" : "s"))</span></h1>
-<form asp-action="Index" method="post" class="row g-4" novalidate>
+<form asp-action="Index" method="post" class="row g-4" novalidate id="checkout-form"
+      data-fees='@Html.Raw(System.Text.Json.JsonSerializer.Serialize(fees))' data-default-fee="@shipping.FeeFor(null, cart.Subtotal).ToString(System.Globalization.CultureInfo.InvariantCulture)"
+      data-subtotal="@cart.Subtotal.ToString(System.Globalization.CultureInfo.InvariantCulture)" data-discount="@cart.Discount.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+      data-physical="@(cart.HasPhysical ? "true" : "false")" data-currency="@ViewHelpers.CurrencySymbol">
     <div class="col-lg-8">
         <div asp-validation-summary="ModelOnly" class="alert alert-danger small empty-hidden"></div>
 
         <div class="panel mb-3">
-            <h2 class="h5"><span class="step">1</span> Contact details</h2>
+            <h2 class="h5"><span class="step">@step</span> Contact details</h2>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label asp-for="FullName" class="form-label"></label>
@@ -17,21 +24,18 @@
                     <span asp-validation-for="FullName" class="text-danger small"></span>
                 </div>
                 <div class="col-md-6">
+                    <label asp-for="Phone" class="form-label"></label>
+                    <input asp-for="Phone" class="form-control" autocomplete="tel" placeholder="e.g. 0803 123 4567" />
+                    <span asp-validation-for="Phone" class="text-danger small"></span>
+                </div>
+                <div class="col-md-6">
                     <label asp-for="Email" class="form-label"></label>
                     <input asp-for="Email" class="form-control" autocomplete="email" />
                     <span asp-validation-for="Email" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
-                    <label asp-for="Phone" class="form-label">Phone <span class="text-secondary">(optional)</span></label>
-                    <input asp-for="Phone" class="form-control" autocomplete="tel" />
-                    <span asp-validation-for="Phone" class="text-danger small"></span>
-                </div>
             </div>
         </div>
 
-        @{
-            var step = 1;
-        }
         @if (cart.HasServices)
         {
             step++;
@@ -66,12 +70,23 @@
         {
             step++;
             <div class="panel mb-3">
-                <h2 class="h5"><span class="step">@step</span> @(cart.HasPhysical ? "Shipping address" : "Service address")</h2>
+                <h2 class="h5"><span class="step">@step</span> @(cart.HasPhysical ? "Delivery address" : "Service address")</h2>
                 <div class="row g-3">
                     <div class="col-12">
                         <label asp-for="AddressLine" class="form-label"></label>
-                        <input asp-for="AddressLine" class="form-control" autocomplete="street-address" required />
+                        <input asp-for="AddressLine" class="form-control" autocomplete="street-address" placeholder="House number, street, landmark" required />
                         <span asp-validation-for="AddressLine" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="State" class="form-label"></label>
+                        <select asp-for="State" class="form-select" required data-state-select>
+                            <option value="">Choose your state...</option>
+                            @foreach (var state in ShippingOptions.NigerianStates)
+                            {
+                                <option value="@state">@state</option>
+                            }
+                        </select>
+                        <span asp-validation-for="State" class="text-danger small"></span>
                     </div>
                     <div class="col-md-6">
                         <label asp-for="City" class="form-label"></label>
@@ -79,11 +94,7 @@
                         <span asp-validation-for="City" class="text-danger small"></span>
                     </div>
                     <div class="col-md-6">
-                        <label asp-for="State" class="form-label"></label>
-                        <input asp-for="State" class="form-control" autocomplete="address-level1" />
-                    </div>
-                    <div class="col-md-6">
-                        <label asp-for="PostalCode" class="form-label"></label>
+                        <label asp-for="PostalCode" class="form-label">Postal code <span class="text-secondary">(optional)</span></label>
                         <input asp-for="PostalCode" class="form-control" autocomplete="postal-code" />
                     </div>
                     <div class="col-md-6">
@@ -92,24 +103,32 @@
                         <span asp-validation-for="Country" class="text-danger small"></span>
                     </div>
                 </div>
+                @if (cart.HasPhysical)
+                {
+                    <div class="small text-secondary mt-2" data-eta><i class="bi bi-truck"></i> Delivery fee depends on your state.</div>
+                }
             </div>
         }
 
         <div class="panel mb-3">
             <h2 class="h5"><span class="step">@(++step)</span> Payment method</h2>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" asp-for="PaymentMethod" value="@CheckoutViewModel.PayByCard" id="pay-card" />
-                <label class="form-check-label" for="pay-card"><i class="bi bi-credit-card"></i> Credit or debit card <span class="badge text-bg-light border">Demo: no charge</span></label>
-            </div>
-            @if (cart.NeedsAddress)
+            @for (var i = 0; i < Model.PaymentOptions.Count; i++)
             {
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" asp-for="PaymentMethod" value="@CheckoutViewModel.PayOnDelivery" id="pay-delivery" />
-                    <label class="form-check-label" for="pay-delivery"><i class="bi bi-cash-coin"></i> Pay on delivery / on arrival</label>
-                </div>
+                var (value, label, help) = Model.PaymentOptions[i];
+                var id = "pay-" + i;
+                <label class="pay-option" for="@id">
+                    <input class="form-check-input" type="radio" name="PaymentMethod" value="@value" id="@id" checked="@(Model.PaymentMethod == value)" />
+                    <span>
+                        <strong>@label</strong>
+                        <small class="d-block text-secondary">@help</small>
+                    </span>
+                    @if (value == CheckoutPayment.Paystack)
+                    {
+                        <span class="pay-logos"><span class="pay-badge">VISA</span><span class="pay-badge">Verve</span><span class="pay-badge">Transfer</span></span>
+                    }
+                </label>
             }
             <span asp-validation-for="PaymentMethod" class="text-danger small"></span>
-            <p class="small text-secondary mt-2 mb-0">This is a demo store. No card details are collected and no money is charged.</p>
         </div>
 
         <div class="panel">
@@ -130,16 +149,20 @@
 
     <div class="col-lg-4">
         <div class="panel order-summary">
-            <button type="submit" class="btn btn-buy w-100 mb-3" data-testid="place-order">Place your order</button>
             <h2 class="h5">Order Summary</h2>
             <div class="d-flex justify-content-between small"><span>Items:</span><span>@ViewHelpers.Currency(cart.Subtotal)</span></div>
             @if (cart.HasPhysical)
             {
-                <div class="d-flex justify-content-between small"><span>Shipping &amp; handling:</span><span>@ViewHelpers.Currency(0)</span></div>
+                <div class="d-flex justify-content-between small"><span>Delivery:</span><span data-shipping>@(Model.State == null ? "Choose state" : Model.ShippingFee == 0 ? "FREE" : ViewHelpers.Currency(Model.ShippingFee))</span></div>
+            }
+            @if (cart.Coupon != null)
+            {
+                <div class="d-flex justify-content-between small text-success"><span>Coupon @cart.Coupon.Code:</span><span>-@ViewHelpers.Currency(cart.Discount)</span></div>
             }
             <hr />
-            <div class="d-flex justify-content-between fs-5 fw-bold text-danger-emphasis"><span>Order total:</span><span>@ViewHelpers.Currency(cart.Subtotal)</span></div>
-            <p class="small text-secondary mt-3 mb-0">By placing your order, you agree to our <a asp-controller="Home" asp-action="Privacy">privacy notice and terms</a>.</p>
+            <div class="d-flex justify-content-between fs-5 fw-bold text-danger-emphasis"><span>Total:</span><span data-total>@ViewHelpers.Currency(Model.Total)</span></div>
+            <button type="submit" class="btn btn-buy w-100 mt-3" data-testid="place-order">Place order</button>
+            <p class="small text-secondary mt-3 mb-0"><i class="bi bi-shield-lock"></i> Your payment details are handled securely by our payment partner. By placing your order, you agree to our <a asp-controller="Home" asp-action="Privacy">terms</a>.</p>
         </div>
     </div>
 </form>

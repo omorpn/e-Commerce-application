@@ -21,8 +21,10 @@ namespace ECommerce.Tests
             {
                 ["FullName"] = "Test Customer",
                 ["Email"] = "customer@test.local",
+                ["Phone"] = "08031234567",
                 ["AddressLine"] = "5 Test Close",
-                ["City"] = "Lagos",
+                ["City"] = "Ikeja",
+                ["State"] = "Lagos",
                 ["Country"] = "Nigeria",
                 ["PaymentMethod"] = "Card (demo)"
             };
@@ -92,7 +94,7 @@ namespace ECommerce.Tests
             var order = await _app.WithDbAsync(db => db.Orders.FirstAsync(o => o.OrderNo == orderNo));
             Assert.Equal(OrderStatus.Completed, order.Status);
 
-            Assert.Contains("$136.00", await seller.GetStringAsync("/Sell")); // seller earns 85% of $160
+            Assert.Contains(e_Commerce_application.Services.ViewHelpers.Currency(136m), await seller.GetStringAsync("/Sell")); // seller earns 85% of 160
         }
 
         [Fact]
@@ -140,7 +142,7 @@ namespace ECommerce.Tests
         [Fact]
         public async Task Wishlist_AddsAndRemoves()
         {
-            var tent = await _app.FindProductAsync("2-Person Camping Tent");
+            var tent = await _app.FindProductAsync("Car Phone Mount");
             var client = await _app.SignInAsync(await _app.CreateUserAsync());
 
             await client.PostFormAsync($"/Products/Details/{tent.ProductCode}", "/Wishlist/Toggle", new() { ["productCode"] = tent.ProductCode.ToString() });

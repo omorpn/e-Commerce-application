@@ -27,7 +27,13 @@
             </div>
         </div>
         <div class="order-card-body">
-            <div class="mb-2"><span class="badge @ViewHelpers.StatusBadge(order.Status)">@order.Status</span></div>
+            <div class="mb-2">
+                <span class="badge @ViewHelpers.StatusBadge(order.Status)">@ViewHelpers.StatusLabel(order.Status)</span>
+                @if (order.Status == OrderStatus.AwaitingPayment)
+                {
+                    <a class="small ms-2" asp-action="Details" asp-route-id="@order.OrderNo">Complete payment</a>
+                }
+            </div>
             @foreach (var item in order.Products)
             {
                 <div class="d-flex justify-content-between small py-1">

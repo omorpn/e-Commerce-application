@@ -1,0 +1,29 @@
+@model Conversation
+@{
+    var userId = ViewData["UserId"] as string;
+    var iAmBuyer = Model.BuyerId == userId;
+    var other = iAmBuyer ? (Model.Seller?.SellerName ?? "Store support") : (Model.Buyer?.DisplayName ?? Model.Buyer?.Email ?? "Customer");
+    ViewData["Title"] = "Chat with " + other;
+}
+<div class="mt-3">
+    <a asp-action="Index" class="small"><i class="bi bi-chevron-left"></i> All messages</a>
+</div>
+<div class="chat panel mt-2">
+    <div class="chat-head">
+        <i class="bi bi-person-circle fs-3"></i>
+        <div class="flex-grow-1">
+            <div class="fw-semibold">@other</div>
+            @if (Model.Product != null)
+            {
+                <a class="small" asp-controller="Products" asp-action="Details" asp-route-id="@Model.ProductCode">About: @Model.Product.Name</a>
+            }
+        </div>
+    </div>
+    <div class="chat-body" id="chat-body" data-refresh="@Url.Action("Thread", new { id = Model.Id, partial = 1 })">
+        <partial name="_Messages" model="Model" />
+    </div>
+    <form asp-action="Send" asp-route-id="@Model.Id" method="post" class="chat-form">
+        <textarea name="body" class="form-control" rows="2" maxlength="2000" placeholder="Type a message..." required data-testid="chat-input"></textarea>
+        <button class="btn btn-buy" type="submit" data-testid="chat-send"><i class="bi bi-send"></i><span class="d-none d-sm-inline"> Send</span></button>
+    </form>
+</div>

@@ -132,6 +132,12 @@
                     <span asp-validation-for="File" class="text-danger small"></span>
                 </div>
             }
+            <div class="mb-3">
+                <label asp-for="ImageUrl" class="form-label"></label>
+                <input asp-for="ImageUrl" class="form-control" placeholder="https://..." />
+                <div class="form-text">Used when no image is uploaded, e.g. a photo from your Instagram or website.</div>
+                <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+            </div>
             <div class="mb-1">
                 <label asp-for="Image" class="form-label">@(Model.Type == ProductType.Ebook ? "Cover" : "Image") (JPG, PNG or WEBP, max 5 MB)</label>
                 <input asp-for="Image" type="file" class="form-control" accept=".jpg,.jpeg,.png,.webp" data-preview="#image-preview" />
@@ -171,9 +177,9 @@
         </div>
         <div class="panel">
             <h2 class="h5">Pricing</h2>
-            <label asp-for="Price" class="form-label">@(Model.Type == ProductType.Service ? "Price per session (USD)" : "Price (USD)")</label>
+            <label asp-for="Price" class="form-label">@(Model.Type == ProductType.Service ? "Price per session" : "Price")</label>
             <div class="input-group">
-                <span class="input-group-text">$</span>
+                <span class="input-group-text">@ViewHelpers.CurrencySymbol</span>
                 <input asp-for="Price" class="form-control" step="0.01" min="0" data-royalty-input />
             </div>
             <span asp-validation-for="Price" class="text-danger small"></span>
@@ -183,14 +189,18 @@
             }
             <label asp-for="ListPrice" class="form-label mt-3"></label>
             <div class="input-group">
-                <span class="input-group-text">$</span>
+                <span class="input-group-text">@ViewHelpers.CurrencySymbol</span>
                 <input asp-for="ListPrice" class="form-control" step="0.01" min="0" />
             </div>
             <div class="form-text">Set a higher "was" price to show your listing in Today's Deals.</div>
             <span asp-validation-for="ListPrice" class="text-danger small"></span>
+            <label asp-for="DealEndsAt" class="form-label mt-3"></label>
+            <input asp-for="DealEndsAt" type="datetime-local" class="form-control" />
+            <div class="form-text">Adds your listing to Flash Sales with a countdown until this time (UTC).</div>
+            <span asp-validation-for="DealEndsAt" class="text-danger small"></span>
             @if (!isAdmin)
             {
-                <div class="small mt-2">You earn about <strong data-royalty-output data-rate="@Rates.Value.RateFor(Model.Type).ToString(System.Globalization.CultureInfo.InvariantCulture)">$0.00</strong> per sale.</div>
+                <div class="small mt-2">You earn about <strong data-royalty-output data-currency="@ViewHelpers.CurrencySymbol" data-rate="@Rates.Value.RateFor(Model.Type).ToString(System.Globalization.CultureInfo.InvariantCulture)">@ViewHelpers.Currency(0)</strong> per sale.</div>
             }
             <hr />
             <div class="d-grid gap-2">

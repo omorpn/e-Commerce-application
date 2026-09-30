@@ -8,7 +8,7 @@
     <div class="col-lg-8">
         <div class="panel">
             <a asp-action="Index" class="small"><i class="bi bi-chevron-left"></i> Orders</a>
-            <h1 class="h4">Order #@Model.OrderNo <span class="badge @ViewHelpers.StatusBadge(Model.Status) fs-6 align-middle">@Model.Status</span></h1>
+            <h1 class="h4">Order #@Model.OrderNo <span class="badge @ViewHelpers.StatusBadge(Model.Status) fs-6 align-middle">@ViewHelpers.StatusLabel(Model.Status)</span></h1>
             <div class="small text-secondary mb-3">Placed @Model.OrderDate.ToString("MMMM d, yyyy HH:mm") UTC · Last updated @Model.UpdatedAt.ToString("MMM d, HH:mm")</div>
             <table class="table">
                 <thead><tr><th>Item</th><th>Type</th><th>Seller</th><th>Fulfilment</th><th class="text-end">Unit</th><th class="text-end">Qty</th><th class="text-end">Total</th></tr></thead>
@@ -26,7 +26,18 @@
                         </tr>
                     }
                 </tbody>
-                <tfoot><tr><th colspan="6" class="text-end">Total</th><th class="text-end">@ViewHelpers.Currency(Model.InvoicePrice)</th></tr></tfoot>
+                <tfoot>
+                    <tr><td colspan="6" class="text-end">Items</td><td class="text-end">@ViewHelpers.Currency(Model.Subtotal == 0 ? Model.InvoicePrice : Model.Subtotal)</td></tr>
+                    @if (Model.ShippingFee > 0)
+                    {
+                        <tr><td colspan="6" class="text-end">Delivery (@Model.State)</td><td class="text-end">@ViewHelpers.Currency(Model.ShippingFee)</td></tr>
+                    }
+                    @if (Model.Discount > 0)
+                    {
+                        <tr><td colspan="6" class="text-end">Coupon @Model.CouponCode</td><td class="text-end">-@ViewHelpers.Currency(Model.Discount)</td></tr>
+                    }
+                    <tr><th colspan="6" class="text-end">Total</th><th class="text-end">@ViewHelpers.Currency(Model.InvoicePrice)</th></tr>
+                </tfoot>
             </table>
         </div>
     </div>
@@ -39,14 +50,15 @@
             }
             else
             {
-                <form asp-action="UpdateStatus" asp-route-id="@Model.OrderNo" method="post" class="d-flex gap-2">
+                <form asp-action="UpdateStatus" asp-route-id="@Model.OrderNo" method="post" class="d-grid gap-2">
                     <select name="status" class="form-select form-select-sm">
                         @foreach (var s in Enum.GetValues<OrderStatus>())
                         {
-                            <option value="@s" selected="@(Model.Status == s)">@s</option>
+                            <option value="@s" selected="@(Model.Status == s)">@ViewHelpers.StatusLabel(s)</option>
                         }
                     </select>
-                    <button class="btn btn-buy btn-sm" type="submit">Update</button>
+                    <input name="note" class="form-control form-control-sm" maxlength="200" placeholder="Note for the customer, e.g. rider name or tracking number" />
+                    <button class="btn btn-buy btn-sm" type="submit">Update &amp; notify customer</button>
                 </form>
                 <div class="form-text">Delivered/Completed marks every line fulfilled. Cancelling returns stock and revokes download access from this order.</div>
             }
@@ -65,7 +77,28 @@
                 <div>@Model.Country</div>
             }
             <h2 class="h6 mt-3">Payment</h2>
-            <div>@(Model.PaymentMethod ?? "-")</div>
+            <div>@(Model.PaymentMethod ?? "-") · <span class="badge @(Model.PaymentStatus == PaymentStatus.Paid ? "text-bg-success" : "text-bg-light border")">@ViewHelpers.PaymentLabel(Model.PaymentStatus)</span></div>
+            @if (Model.PaymentReference != null)
+            {
+                <div class="text-secondary">Ref: @Model.PaymentReference</div>
+            }
+            @if (Model.PaidAt.HasValue)
+            {
+                <div class="text-secondary">Paid @Model.PaidAt.Value.ToString("MMM d, HH:mm") UTC</div>
+            }
         </div>
     </div>
 </div>
+
+@if (Model.Events.Count > 0)
+{
+    <div class="panel mt-3">
+        <h2 class="h6">History</h2>
+        <ol class="timeline">
+            @foreach (var ev in Model.Events.OrderByDescending(e => e.CreatedAt).ThenByDescending(e => e.Id))
+            {
+                <li><div class="fw-semibold">@ev.Title</div><div class="small">@ev.Message</div><div class="small text-secondary">@ev.CreatedAt.ToString("MMM d, yyyy HH:mm") UTC</div></li>
+            }
+        </ol>
+    </div>
+}

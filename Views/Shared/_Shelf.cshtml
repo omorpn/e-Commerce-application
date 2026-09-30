@@ -4,9 +4,12 @@
     <section class="shelf">
         <div class="shelf-head">
             <h2 class="h4">@Model.Title</h2>
-            <a href="@Model.Link">@Model.LinkText</a>
+            @if (!string.IsNullOrEmpty(Model.LinkText))
+            {
+                <a href="@Model.Link">@Model.LinkText <i class="bi bi-chevron-right"></i></a>
+            }
         </div>
-        <div class="product-grid">
+        <div class="product-row">
             @foreach (var item in Model.Items)
             {
                 <partial name="_ProductCard" model="item" />

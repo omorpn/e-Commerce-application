@@ -38,7 +38,7 @@
                                 <td>@order.OrderDate.ToString("MMM d, HH:mm")</td>
                                 <td>@(order.CustomerName ?? "API order")</td>
                                 <td class="text-end">@ViewHelpers.Currency(order.InvoicePrice)</td>
-                                <td><span class="badge @ViewHelpers.StatusBadge(order.Status)">@order.Status</span></td>
+                                <td><span class="badge @ViewHelpers.StatusBadge(order.Status)">@ViewHelpers.StatusLabel(order.Status)</span></td>
                             </tr>
                         }
                         @if (Model.RecentOrders.Count == 0)

@@ -42,7 +42,7 @@ namespace e_Commerce_application.Areas.Admin.Controllers
 
         public async Task<IActionResult> Details(int id)
         {
-            var order = await _db.Orders.AsNoTracking().Include(o => o.Products).Include(o => o.User)
+            var order = await _db.Orders.AsNoTracking().Include(o => o.Products).Include(o => o.User).Include(o => o.Events)
                 .FirstOrDefaultAsync(o => o.OrderNo == id);
             if (order == null)
             {
@@ -55,12 +55,12 @@ namespace e_Commerce_application.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int id, OrderStatus status)
+        public async Task<IActionResult> UpdateStatus(int id, OrderStatus status, string? note)
         {
-            var result = await _orders.UpdateStatusAsync(id, status);
+            var result = await _orders.UpdateStatusAsync(id, status, note);
             if (result.Succeeded)
             {
-                this.Success($"Order #{id} is now {status}.");
+                this.Success($"Order #{id} updated. The customer has been notified.");
             }
             else
             {

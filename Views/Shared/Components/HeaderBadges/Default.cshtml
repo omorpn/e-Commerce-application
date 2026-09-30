@@ -1,0 +1,15 @@
+@model (int Notifications, int Messages)
+<a class="nav-icon" asp-area="" asp-controller="Messages" asp-action="Index" aria-label="Messages" title="Messages">
+    <i class="bi bi-chat-dots"></i>
+    @if (Model.Messages > 0)
+    {
+        <span class="nav-badge" data-testid="message-badge">@Model.Messages</span>
+    }
+</a>
+<a class="nav-icon" asp-area="" asp-controller="Notifications" asp-action="Index" aria-label="Notifications" title="Notifications">
+    <i class="bi bi-bell"></i>
+    @if (Model.Notifications > 0)
+    {
+        <span class="nav-badge" data-testid="notification-badge">@(Model.Notifications > 99 ? "99+" : Model.Notifications)</span>
+    }
+</a>

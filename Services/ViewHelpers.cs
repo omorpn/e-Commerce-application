@@ -5,17 +5,29 @@ namespace e_Commerce_application.Services
 {
     public static class ViewHelpers
     {
-        private static readonly CultureInfo Money = CultureInfo.GetCultureInfo("en-US");
+        private static readonly CultureInfo Numbers = CultureInfo.GetCultureInfo("en-US");
 
-        public static string Price(decimal price) => price == 0 ? "Free" : price.ToString("C", Money);
+        // Set from the "Store" settings at startup.
+        public static string CurrencySymbol { get; set; } = "₦";
 
-        public static string Currency(decimal amount) => amount.ToString("C", Money);
+        public static string Price(decimal price) => price == 0 ? "Free" : Currency(price);
+
+        // ₦185,000 for whole amounts, ₦1,234.50 otherwise.
+        public static string Currency(decimal amount)
+        {
+            var value = Math.Abs(amount).ToString(amount % 1 == 0 ? "N0" : "N2", Numbers);
+            return (amount < 0 ? "-" : "") + CurrencySymbol + value;
+        }
 
         public static string CategoryIcon(string? category) => category switch
         {
             "Electronics" => "bi-headphones",
             "Computers" => "bi-laptop",
             "Phones & Tablets" => "bi-phone",
+            "Phone Accessories" => "bi-earbuds",
+            "Watches" => "bi-smartwatch",
+            "Fragrances" => "bi-stars",
+            "Souvenirs" => "bi-gift",
             "Home & Kitchen" => "bi-cup-hot",
             "Furniture" => "bi-lamp",
             "Fashion" => "bi-bag",
@@ -55,6 +67,18 @@ namespace e_Commerce_application.Services
             _ => "bi-box-seam"
         };
 
+        // Soft colour pair per category for placeholder tiles and category circles.
+        public static string PlaceholderStyle(string? key)
+        {
+            var hash = 0;
+            foreach (var c in key ?? "")
+            {
+                hash = unchecked(hash * 31 + c);
+            }
+            var hue = (hash & 0x7fffffff) % 360;
+            return $"--ph-a: hsl({hue} 85% 95%); --ph-b: hsl({(hue + 25) % 360} 70% 86%); --ph-ink: hsl({hue} 45% 32%);";
+        }
+
         public static string TypeIcon(ProductType type) => type switch
         {
             ProductType.Ebook => "bi-book",
@@ -91,6 +115,7 @@ namespace e_Commerce_application.Services
         public static string StatusBadge(OrderStatus status) => status switch
         {
             OrderStatus.Pending => "text-bg-warning",
+            OrderStatus.AwaitingPayment => "text-bg-warning",
             OrderStatus.Processing => "text-bg-info",
             OrderStatus.Shipped => "text-bg-primary",
             OrderStatus.Delivered or OrderStatus.Completed => "text-bg-success",
@@ -114,6 +139,32 @@ namespace e_Commerce_application.Services
             _ => $"{bytes / (1024.0 * 1024):0.#} MB"
         };
 
-        public static string ImageUrl(Product p) => $"/Media/Image/{p.ProductCode}?v={p.UpdatedAt.Ticks}";
+        // Uploaded image first, then an external link; null means "show a placeholder".
+        public static string? ImageUrl(Product p) =>
+            p.ImagePath != null ? $"/Media/Image/{p.ProductCode}?v={p.UpdatedAt.Ticks}" : p.ImageUrl;
+
+        public static string StatusLabel(OrderStatus status) => status switch
+        {
+            OrderStatus.AwaitingPayment => "Awaiting payment",
+            _ => status.ToString()
+        };
+
+        public static string PaymentLabel(PaymentStatus status) => status switch
+        {
+            PaymentStatus.Paid => "Paid",
+            PaymentStatus.Pending => "Awaiting payment",
+            PaymentStatus.Failed => "Payment failed",
+            _ => "Not paid yet"
+        };
+
+        public static string TimeAgo(DateTime utc)
+        {
+            var span = DateTime.UtcNow - utc;
+            return span.TotalMinutes < 1 ? "just now"
+                : span.TotalHours < 1 ? $"{(int)span.TotalMinutes} min ago"
+                : span.TotalDays < 1 ? $"{(int)span.TotalHours} h ago"
+                : span.TotalDays < 7 ? $"{(int)span.TotalDays} d ago"
+                : utc.ToString("MMM d, yyyy");
+        }
     }
 }

@@ -71,12 +71,13 @@ namespace ECommerce.Tests
             {
                 ["FullName"] = "Reader",
                 ["Email"] = "reader@test.local",
+                ["Phone"] = "08031234567",
                 ["PaymentMethod"] = "Card (demo)"
             });
             Assert.Contains("/Orders/Details/", checkout.Headers.Location!.ToString());
 
             var dashboard = await author.GetStringAsync("/Sell");
-            Assert.Contains("$2.09", dashboard); // 70% of $2.99
+            Assert.Contains(e_Commerce_application.Services.ViewHelpers.Currency(2.09m), dashboard); // 70% of 2.99
         }
 
         [Fact]

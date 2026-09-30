@@ -6,9 +6,9 @@ namespace e_Commerce_application.Services
     {
         public static readonly string[] ProductCategories =
         {
-            "Electronics", "Computers", "Phones & Tablets", "Home & Kitchen", "Furniture", "Fashion", "Jewelry",
-            "Beauty", "Health", "Grocery", "Baby", "Toys & Games", "Sports & Outdoors", "Garden", "Pet Supplies",
-            "Automotive", "Books", "Office"
+            "Phones & Tablets", "Phone Accessories", "Electronics", "Computers", "Fashion", "Watches", "Fragrances",
+            "Beauty", "Jewelry", "Home & Kitchen", "Furniture", "Health", "Grocery", "Baby", "Toys & Games",
+            "Sports & Outdoors", "Garden", "Pet Supplies", "Automotive", "Souvenirs", "Books", "Office"
         };
 
         public static readonly string[] EbookCategories =

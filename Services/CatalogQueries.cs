@@ -34,7 +34,7 @@ namespace e_Commerce_application.Services
 
         public static async Task<bool> HasPurchasedAsync(this Data.AppDbContext db, string userId, int productCode) =>
             await db.LibraryEntries.AnyAsync(l => l.UserId == userId && l.ProductCode == productCode) ||
-            await db.Orders.AnyAsync(o => o.UserId == userId && o.Status != OrderStatus.Cancelled
+            await db.Orders.AnyAsync(o => o.UserId == userId && o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.AwaitingPayment
                 && o.Products.Any(i => i.ProductCode == productCode));
     }
 }

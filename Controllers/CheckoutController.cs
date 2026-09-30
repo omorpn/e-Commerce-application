@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace e_Commerce_application.Controllers
 {
@@ -14,21 +15,28 @@ namespace e_Commerce_application.Controllers
     {
         private readonly CartService _cart;
         private readonly OrderService _orders;
+        private readonly IPaymentGateway _gateway;
         private readonly AppDbContext _db;
         private readonly UserManager<ApplicationUser> _users;
+        private readonly ShippingOptions _shipping;
+        private readonly ShopSettings _store;
 
-        public CheckoutController(CartService cart, OrderService orders, AppDbContext db, UserManager<ApplicationUser> users)
+        public CheckoutController(CartService cart, OrderService orders, IPaymentGateway gateway, AppDbContext db,
+            UserManager<ApplicationUser> users, IOptions<ShippingOptions> shipping, IOptions<ShopSettings> store)
         {
             _cart = cart;
             _orders = orders;
+            _gateway = gateway;
             _db = db;
             _users = users;
+            _shipping = shipping.Value;
+            _store = store.Value;
         }
 
         public async Task<IActionResult> Index()
         {
-            var user = await _users.GetUserAsync(User);
-            var cart = await _cart.BuildAsync(user!.Id);
+            var user = (await _users.GetUserAsync(User))!;
+            var cart = await BuildCartAsync(user.Id);
             if (cart.IsEmpty)
             {
                 return RedirectToAction("Index", "Cart");
@@ -38,27 +46,30 @@ namespace e_Commerce_application.Controllers
             var last = await _db.Orders.AsNoTracking().Where(o => o.UserId == user.Id && o.AddressLine != null)
                 .OrderByDescending(o => o.OrderDate).FirstOrDefaultAsync();
 
-            return View(new CheckoutViewModel
+            var model = new CheckoutViewModel
             {
                 FullName = last?.CustomerName ?? user.DisplayName ?? string.Empty,
                 Email = user.Email ?? string.Empty,
-                Phone = last?.Phone ?? user.PhoneNumber,
+                Phone = last?.Phone ?? user.PhoneNumber ?? string.Empty,
                 AddressLine = last?.AddressLine,
                 City = last?.City,
                 State = last?.State,
                 PostalCode = last?.PostalCode,
-                Country = last?.Country,
+                Country = last?.Country ?? "Nigeria",
                 Bookings = cart.Lines.Where(l => l.Product.IsService)
                     .Select(l => new ServiceBookingInput { ProductCode = l.Product.ProductCode }).ToList(),
                 Cart = cart
-            });
+            };
+            Prepare(model);
+            model.PaymentMethod = model.PaymentOptions[0].Value;
+            return View(model);
         }
 
         [HttpPost]
         public async Task<IActionResult> Index(CheckoutViewModel model)
         {
             var userId = _users.GetUserId(User)!;
-            model.Cart = await _cart.BuildAsync(userId);
+            model.Cart = await BuildCartAsync(userId);
             if (model.Cart.IsEmpty)
             {
                 return RedirectToAction("Index", "Cart");
@@ -66,6 +77,11 @@ namespace e_Commerce_application.Controllers
             if (model.Cart.HasProblems)
             {
                 this.Error("Some items in your cart need attention before you can check out.");
+                return RedirectToAction("Index", "Cart");
+            }
+            if (model.Cart.CouponError != null)
+            {
+                this.Error(model.Cart.CouponError);
                 return RedirectToAction("Index", "Cart");
             }
 
@@ -87,17 +103,16 @@ namespace e_Commerce_application.Controllers
 
             if (model.Cart.NeedsAddress)
             {
-                if (string.IsNullOrWhiteSpace(model.AddressLine)) ModelState.AddModelError(nameof(model.AddressLine), "The Address field is required.");
-                if (string.IsNullOrWhiteSpace(model.City)) ModelState.AddModelError(nameof(model.City), "The City field is required.");
+                if (string.IsNullOrWhiteSpace(model.AddressLine)) ModelState.AddModelError(nameof(model.AddressLine), "The Street address field is required.");
+                if (string.IsNullOrWhiteSpace(model.City)) ModelState.AddModelError(nameof(model.City), "The City / Town field is required.");
+                if (string.IsNullOrWhiteSpace(model.State)) ModelState.AddModelError(nameof(model.State), "Please choose your state.");
                 if (string.IsNullOrWhiteSpace(model.Country)) ModelState.AddModelError(nameof(model.Country), "The Country field is required.");
             }
 
-            var allowedPayments = model.Cart.NeedsAddress
-                ? new[] { CheckoutViewModel.PayByCard, CheckoutViewModel.PayOnDelivery }
-                : new[] { CheckoutViewModel.PayByCard };
-            if (!allowedPayments.Contains(model.PaymentMethod))
+            Prepare(model);
+            if (!model.PaymentOptions.Any(o => o.Value == model.PaymentMethod))
             {
-                ModelState.AddModelError(nameof(model.PaymentMethod), "Please choose a valid payment method.");
+                ModelState.AddModelError(nameof(model.PaymentMethod), "Please choose a payment method.");
             }
 
             if (!ModelState.IsValid)
@@ -105,18 +120,26 @@ namespace e_Commerce_application.Controllers
                 return View(model);
             }
 
+            var payment = model.PaymentMethod switch
+            {
+                CheckoutPayment.Paystack => PaymentMode.Online,
+                CheckoutPayment.OnDelivery => PaymentMode.OnDelivery,
+                _ => PaymentMode.PaidNow
+            };
             var result = await _orders.PlaceOrderAsync(new PlaceOrderRequest
             {
                 UserId = userId,
                 CustomerName = model.FullName.Trim(),
                 Email = model.Email.Trim(),
-                Phone = model.Phone,
+                Phone = model.Phone.Trim(),
                 AddressLine = model.Cart.NeedsAddress ? model.AddressLine : null,
                 City = model.Cart.NeedsAddress ? model.City : null,
                 State = model.Cart.NeedsAddress ? model.State : null,
                 PostalCode = model.Cart.NeedsAddress ? model.PostalCode : null,
                 Country = model.Cart.NeedsAddress ? model.Country : null,
                 PaymentMethod = model.PaymentMethod,
+                Payment = payment,
+                CouponCode = model.Cart.Coupon?.Code,
                 Lines = model.Cart.Lines.Select(l =>
                 {
                     var booking = bookings.FirstOrDefault(b => b.ProductCode == l.Product.ProductCode);
@@ -130,12 +153,44 @@ namespace e_Commerce_application.Controllers
                 {
                     ModelState.AddModelError(string.Empty, error);
                 }
-                model.Cart = await _cart.BuildAsync(userId);
+                model.Cart = await BuildCartAsync(userId);
+                Prepare(model);
                 return View(model);
             }
 
             _cart.Clear();
-            return RedirectToAction("Details", "Orders", new { id = result.Value!.OrderNo, placed = true });
+            var order = result.Value!;
+            if (payment == PaymentMode.Online)
+            {
+                return await PaymentsController.StartPaymentAsync(this, _gateway, order, _store.CurrencyCode);
+            }
+            return RedirectToAction("Details", "Orders", new { id = order.OrderNo, placed = true });
+        }
+
+        private async Task<CartViewModel> BuildCartAsync(string userId)
+        {
+            var cart = await _cart.BuildAsync(userId);
+            if (_cart.CouponCode != null && !cart.IsEmpty)
+            {
+                var coupon = await _orders.FindCouponAsync(_cart.CouponCode, cart.Subtotal);
+                cart.Coupon = coupon.Value;
+                cart.CouponError = coupon.Succeeded ? null : coupon.Errors[0];
+            }
+            return cart;
+        }
+
+        private void Prepare(CheckoutViewModel model)
+        {
+            model.ShippingFee = model.Cart.HasPhysical ? _shipping.FeeFor(model.State, model.Cart.Subtotal) : 0;
+
+            model.PaymentOptions.Clear();
+            model.PaymentOptions.Add(_gateway.IsConfigured
+                ? (CheckoutPayment.Paystack, "Pay online with Paystack", "Card, bank transfer or USSD. You'll be taken to Paystack's secure page.")
+                : (CheckoutPayment.Demo, "Card (demo)", "Online payments aren't set up on this store yet; no money is charged."));
+            if (model.Cart.NeedsAddress && !model.Cart.HasDownloads)
+            {
+                model.PaymentOptions.Add((CheckoutPayment.OnDelivery, "Pay on delivery", "Pay by cash or transfer when your order arrives."));
+            }
         }
     }
 }

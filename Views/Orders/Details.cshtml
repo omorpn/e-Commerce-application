@@ -1,7 +1,8 @@
 @model Order
 @{
     ViewData["Title"] = $"Order #{Model.OrderNo}";
-    var placed = ViewData["Placed"] as bool? == true;
+    var placed = ViewData["Placed"] as bool? == true && Model.Status != OrderStatus.AwaitingPayment;
+    var canPayOnline = ViewData["CanPayOnline"] as bool? == true;
     var steps = new[] { OrderStatus.Pending, OrderStatus.Processing, OrderStatus.Shipped, OrderStatus.Delivered };
     var stepIndex = Array.IndexOf(steps, Model.Status);
 }
@@ -24,6 +25,22 @@
                 <span>Your service providers have been notified of your booking.</span>
             }
         </p>
+    </div>
+}
+
+@if (Model.Status == OrderStatus.AwaitingPayment)
+{
+    <div class="panel border-warning mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2" data-testid="awaiting-payment">
+        <div>
+            <h2 class="h5 mb-1"><i class="bi bi-hourglass-split text-warning"></i> Waiting for your payment</h2>
+            <div class="small text-secondary">Complete the payment of <strong>@ViewHelpers.Currency(Model.InvoicePrice)</strong> to confirm this order. Unpaid orders are cancelled automatically after a while.</div>
+        </div>
+        @if (canPayOnline)
+        {
+            <form asp-action="Pay" asp-route-id="@Model.OrderNo" method="post">
+                <button class="btn btn-buy" type="submit">Pay now</button>
+            </form>
+        }
     </div>
 }
 
@@ -54,13 +71,21 @@
             </div>
         }
         <div class="col-md-4">
-            <h2 class="h6">Payment method</h2>
+            <h2 class="h6">Payment</h2>
             <div>@(Model.PaymentMethod ?? "-")</div>
+            <span class="badge @(Model.PaymentStatus == PaymentStatus.Paid ? "text-bg-success" : "text-bg-light border")">@ViewHelpers.PaymentLabel(Model.PaymentStatus)</span>
         </div>
         <div class="col-md-4">
             <h2 class="h6">Order summary</h2>
-            <div class="d-flex justify-content-between"><span>Item(s) subtotal:</span><span>@ViewHelpers.Currency(Model.InvoicePrice)</span></div>
-            <div class="d-flex justify-content-between"><span>Shipping:</span><span>@ViewHelpers.Currency(0)</span></div>
+            <div class="d-flex justify-content-between"><span>Item(s) subtotal:</span><span>@ViewHelpers.Currency(Model.Subtotal == 0 ? Model.InvoicePrice : Model.Subtotal)</span></div>
+            @if (Model.HasPhysicalItems)
+            {
+                <div class="d-flex justify-content-between"><span>Delivery:</span><span>@(Model.ShippingFee == 0 ? "FREE" : ViewHelpers.Currency(Model.ShippingFee))</span></div>
+            }
+            @if (Model.Discount > 0)
+            {
+                <div class="d-flex justify-content-between text-success"><span>Coupon @Model.CouponCode:</span><span>-@ViewHelpers.Currency(Model.Discount)</span></div>
+            }
             <div class="d-flex justify-content-between fw-bold"><span>Grand total:</span><span>@ViewHelpers.Currency(Model.InvoicePrice)</span></div>
         </div>
     </div>
@@ -69,9 +94,13 @@
 <div class="panel mt-3">
     <div class="d-flex align-items-center gap-2 mb-3">
         <h2 class="h5 mb-0">Status</h2>
-        <span class="badge @ViewHelpers.StatusBadge(Model.Status)" data-testid="order-status">@Model.Status</span>
+        <span class="badge @ViewHelpers.StatusBadge(Model.Status)" data-testid="order-status">@ViewHelpers.StatusLabel(Model.Status)</span>
     </div>
-    @if (Model.HasPhysicalItems && Model.Status != OrderStatus.Cancelled)
+    @if (!string.IsNullOrEmpty(Model.TrackingNote))
+    {
+        <div class="alert alert-info small py-2"><i class="bi bi-info-circle"></i> @Model.TrackingNote</div>
+    }
+    @if (Model.HasPhysicalItems && Model.Status is not (OrderStatus.Cancelled or OrderStatus.AwaitingPayment))
     {
         <ol class="tracker">
             @for (var i = 0; i < steps.Length; i++)
@@ -119,3 +148,23 @@
         </div>
     }
 </div>
+
+@if (Model.Events.Count > 0)
+{
+    <div class="panel mt-3">
+        <h2 class="h5">Order history</h2>
+        <ol class="timeline" data-testid="timeline">
+            @foreach (var ev in Model.Events.OrderByDescending(e => e.CreatedAt).ThenByDescending(e => e.Id))
+            {
+                <li>
+                    <div class="fw-semibold">@ev.Title</div>
+                    @if (!string.IsNullOrEmpty(ev.Message))
+                    {
+                        <div class="small">@ev.Message</div>
+                    }
+                    <div class="small text-secondary">@ev.CreatedAt.ToString("MMM d, yyyy HH:mm") UTC</div>
+                </li>
+            }
+        </ol>
+    </div>
+}

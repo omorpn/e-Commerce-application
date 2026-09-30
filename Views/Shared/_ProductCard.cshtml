@@ -1,13 +1,15 @@
 @model ProductSummary
 @{
     var p = Model.Product;
+    var canQuickAdd = p.IsListed && p.Price > 0 && (p.IsPhysical ? p.Stock > 0 : p.IsDownloadable);
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
 }
 <div class="product-card h-100">
     <a class="product-card-media" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode" tabindex="-1">
         <partial name="_ProductImage" model="p" />
         @if (!p.IsPhysical)
         {
-            <span class="badge badge-format"><i class="bi @ViewHelpers.TypeIcon(p.Type)"></i> @Catalog.Label(p.Type)</span>
+            <span class="badge badge-format" title="@Catalog.Label(p.Type)"><i class="bi @ViewHelpers.TypeIcon(p.Type)"></i> <span class="label-text">@Catalog.Label(p.Type)</span></span>
         }
         @if (p.IsDeal)
         {
@@ -18,12 +20,8 @@
         <a class="product-card-title" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">@p.Name</a>
         @if (p.IsEbook && p.AuthorName != null)
         {
-            <div class="small text-secondary">by @p.AuthorName</div>
+            <div class="small text-secondary text-truncate">by @p.AuthorName</div>
         }
-        <div class="small">
-            <partial name="_Stars" model="Model.Rating" />
-            <span class="text-link">@Model.ReviewCount</span>
-        </div>
         <div>
             <span class="price @(p.Price == 0 ? "price-free" : "")">@ViewHelpers.Price(p.Price)</span>
             @if (p.IsDeal)
@@ -31,28 +29,51 @@
                 <span class="list-price">@ViewHelpers.Currency(p.ListPrice!.Value)</span>
             }
         </div>
+        <div class="small rating-line">
+            <partial name="_Stars" model="Model.Rating" />
+            <span class="text-secondary">(@Model.ReviewCount)</span>
+        </div>
         @switch (p.Type)
         {
             case ProductType.Physical:
                 if (p.Stock == 0)
                 {
-                    <div class="small text-danger">Currently unavailable</div>
+                    <div class="small text-danger">Out of stock</div>
                 }
                 else if (p.Stock <= 5)
                 {
-                    <div class="small text-danger">Only @p.Stock left in stock</div>
+                    <div class="small text-danger">Only @p.Stock left</div>
+                    <div class="stock-bar"><span style="width: @(p.Stock * 20)%"></span></div>
                 }
                 else
                 {
-                    <div class="small text-success">In stock</div>
+                    <div class="small text-success"><i class="bi bi-truck"></i> Fast delivery</div>
                 }
                 break;
             case ProductType.Service:
-                <div class="small text-secondary"><i class="bi bi-clock"></i> @ViewHelpers.Duration(p.DurationMinutes) · @Catalog.LocationLabel(p.ServiceLocation)</div>
+                <div class="small text-secondary text-truncate"><i class="bi bi-clock"></i> @ViewHelpers.Duration(p.DurationMinutes) · @Catalog.LocationLabel(p.ServiceLocation)</div>
                 break;
             default:
-                <div class="small text-secondary">Instant download</div>
+                <div class="small text-secondary"><i class="bi bi-lightning"></i> Instant download</div>
                 break;
         }
+        <div class="card-action">
+            @if (canQuickAdd)
+            {
+                <form asp-controller="Cart" asp-action="Add" method="post">
+                    <input type="hidden" name="productCode" value="@p.ProductCode" />
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <button class="btn btn-cart btn-sm w-100" type="submit"><i class="bi bi-cart-plus"></i> Add to cart</button>
+                </form>
+            }
+            else if (p.IsService && p.IsListed)
+            {
+                <a class="btn btn-cart btn-sm w-100" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode"><i class="bi bi-calendar-check"></i> Book now</a>
+            }
+            else if (p.IsDownloadable && p.Price == 0)
+            {
+                <a class="btn btn-light border btn-sm w-100" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">Get it free</a>
+            }
+        </div>
     </div>
 </div>

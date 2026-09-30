@@ -24,6 +24,8 @@ namespace e_Commerce_application.Services
             PageCount = p.PageCount,
             Price = p.Price,
             ListPrice = p.ListPrice,
+            DealEndsAt = p.DealEndsAt,
+            ImageUrl = p.ImageUrl,
             Stock = p.Stock,
             DurationMinutes = p.DurationMinutes,
             ServiceLocation = p.ServiceLocation,
@@ -51,6 +53,15 @@ namespace e_Commerce_application.Services
             {
                 modelState.AddModelError(nameof(model.Category), "Please choose a category.");
             }
+            if (!string.IsNullOrWhiteSpace(model.ImageUrl)
+                && (!Uri.TryCreate(model.ImageUrl.Trim(), UriKind.Absolute, out var imageUri) || imageUri.Scheme != Uri.UriSchemeHttps))
+            {
+                modelState.AddModelError(nameof(model.ImageUrl), "Image links must start with https://");
+            }
+            if (model.DealEndsAt.HasValue && (model.ListPrice is null or 0))
+            {
+                modelState.AddModelError(nameof(model.ListPrice), "Set a list price to run a flash sale.");
+            }
             if (model.ListPrice.HasValue && model.ListPrice.Value > 0 && model.ListPrice.Value <= model.Price)
             {
                 modelState.AddModelError(nameof(model.ListPrice), "The list price must be higher than the price to show a discount. Leave it empty otherwise.");
@@ -62,7 +73,7 @@ namespace e_Commerce_application.Services
                 case ProductType.Service:
                     if (model.Price < 0.01m)
                     {
-                        modelState.AddModelError(nameof(model.Price), "Price must be at least $0.01.");
+                        modelState.AddModelError(nameof(model.Price), "Please enter a price.");
                     }
                     break;
             }
@@ -127,6 +138,8 @@ namespace e_Commerce_application.Services
             product.Category = model.Category;
             product.Price = Math.Round(model.Price, 2);
             product.ListPrice = model.ListPrice is > 0 ? Math.Round(model.ListPrice.Value, 2) : null;
+            product.DealEndsAt = product.ListPrice == null ? null : model.DealEndsAt?.ToUniversalTime();
+            product.ImageUrl = string.IsNullOrWhiteSpace(model.ImageUrl) ? null : model.ImageUrl.Trim();
             product.Stock = model.Type == ProductType.Physical ? model.Stock : 0;
             product.AuthorName = model.Type == ProductType.Ebook ? model.AuthorName?.Trim() : null;
             product.Language = model.Type == ProductType.Ebook ? model.Language : null;

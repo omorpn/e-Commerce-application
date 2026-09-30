@@ -45,6 +45,25 @@ namespace e_Commerce_application.Services
             return kind;
         }
 
+        public static async Task<FileKind?> CheckDigitalAsync(IFormFile? file, string field, ModelStateDictionary modelState)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return null;
+            }
+            if (file.Length > FileSignatures.MaxDigitalBytes)
+            {
+                modelState.AddModelError(field, "Files must be 100 MB or smaller.");
+                return null;
+            }
+            var kind = await FileSignatures.DetectDigitalAsync(file);
+            if (kind == null)
+            {
+                modelState.AddModelError(field, "Unsupported file. Upload a PDF, EPUB, ZIP, MP3, WAV, MP4, JPG, PNG or WEBP file.");
+            }
+            return kind;
+        }
+
         public static async Task<StoredFile> SaveAsync(this IFileStorage storage, IFormFile file, FileKind kind, string folder)
         {
             await using var stream = file.OpenReadStream();

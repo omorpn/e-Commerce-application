@@ -26,19 +26,20 @@ namespace e_Commerce_application.Controllers
             var products = _db.Products.AsNoTracking().Listed().Search(query.Q);
             var heading = "All departments";
 
-            switch (query.Dept)
+            var type = Catalog.FromSlug(query.Dept);
+            if (type.HasValue)
             {
-                case "products":
-                    products = products.Where(p => p.Type == ProductType.Physical);
-                    heading = "Shop products";
-                    break;
-                case "ebooks":
-                    products = products.Where(p => p.Type == ProductType.Ebook);
-                    heading = "eBook Store";
-                    break;
-                default:
-                    query.Dept = "all";
-                    break;
+                products = products.Where(p => p.Type == type.Value);
+                heading = Catalog.DepartmentName(type.Value);
+            }
+            else if (query.Dept == "deals")
+            {
+                products = products.Deals();
+                heading = "Today's Deals";
+            }
+            else
+            {
+                query.Dept = "all";
             }
 
             var categories = await products.Select(p => p.Category).Distinct().OrderBy(c => c).ToListAsync();
@@ -66,6 +67,7 @@ namespace e_Commerce_application.Controllers
                 "price-asc" => products.OrderBy(p => p.Price).ThenBy(p => p.Name),
                 "price-desc" => products.OrderByDescending(p => p.Price).ThenBy(p => p.Name),
                 "newest" => products.OrderByDescending(p => p.PublishedAt).ThenByDescending(p => p.ProductCode),
+                "discount" => products.OrderByDescending(p => p.ListPrice == null ? 0 : (p.ListPrice.Value - p.Price) / p.ListPrice.Value),
                 "rating" => products.OrderByDescending(p => p.Reviews.Average(r => (double?)r.Rating) ?? 0).ThenByDescending(p => p.Reviews.Count),
                 _ => products.OrderByDescending(p => p.Reviews.Count).ThenByDescending(p => p.PublishedAt).ThenBy(p => p.ProductCode)
             };
@@ -87,7 +89,7 @@ namespace e_Commerce_application.Controllers
 
         public async Task<IActionResult> Details(int id)
         {
-            var product = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.ProductCode == id);
+            var product = await _db.Products.AsNoTracking().Include(p => p.Seller).FirstOrDefaultAsync(p => p.ProductCode == id);
             if (product == null)
             {
                 return NotFound();
@@ -102,6 +104,11 @@ namespace e_Commerce_application.Controllers
             if (!product.IsListed && !isSeller && !isAdmin && !owned)
             {
                 return NotFound();
+            }
+
+            if (product.IsListed)
+            {
+                RecentlyViewed.Add(HttpContext.Session, id);
             }
 
             var reviews = await _db.Reviews.AsNoTracking().Where(r => r.ProductCode == id)
@@ -123,6 +130,8 @@ namespace e_Commerce_application.Controllers
                 UserReview = userReview,
                 Owned = owned,
                 IsSeller = isSeller,
+                SellerName = product.Seller?.SellerName,
+                InWishlist = userId != null && await _db.WishlistItems.AnyAsync(w => w.UserId == userId && w.ProductCode == id),
                 InCart = _cart.GetItems().GetValueOrDefault(id),
                 Related = await _db.Products.AsNoTracking().Listed()
                     .Where(p => p.Category == product.Category && p.Type == product.Type && p.ProductCode != id)

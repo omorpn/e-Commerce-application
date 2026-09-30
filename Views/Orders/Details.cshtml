@@ -11,13 +11,17 @@
         <h1 class="h4 text-success"><i class="bi bi-check-circle-fill"></i> Order placed, thank you!</h1>
         <p class="mb-0">
             Your order number is <strong>#@Model.OrderNo</strong>.
-            @if (Model.Products.Any(i => i.ProductType == ProductType.Ebook))
+            @if (Model.Products.Any(i => i.ProductType is ProductType.Ebook or ProductType.Digital))
             {
-                <span>Your ebooks are ready in <a asp-controller="Library" asp-action="Index">your library</a>.</span>
+                <span>Your downloads are ready in <a asp-controller="Library" asp-action="Index">your library</a>.</span>
             }
             @if (Model.HasPhysicalItems)
             {
                 <span>We'll let you know when your items ship.</span>
+            }
+            @if (Model.HasServiceItems)
+            {
+                <span>Your service providers have been notified of your booking.</span>
             }
         </p>
     </div>
@@ -39,10 +43,10 @@
 
 <div class="panel mt-3">
     <div class="row g-3 small">
-        @if (Model.HasPhysicalItems)
+        @if (Model.AddressLine != null)
         {
             <div class="col-md-4">
-                <h2 class="h6">Shipping address</h2>
+                <h2 class="h6">@(Model.HasPhysicalItems ? "Shipping address" : "Service address")</h2>
                 <div>@Model.CustomerName</div>
                 <div>@Model.AddressLine</div>
                 <div>@Model.City@(string.IsNullOrEmpty(Model.State) ? "" : ", " + Model.State) @Model.PostalCode</div>
@@ -82,17 +86,32 @@
             <div>
                 <a class="fw-semibold" asp-controller="Products" asp-action="Details" asp-route-id="@item.ProductCode">@item.ProductName</a>
                 <div class="small text-secondary">
-                    @if (item.ProductType == ProductType.Ebook)
+                    @switch (item.ProductType)
                     {
-                        <span>eBook</span>
-                        @if (Model.Status != OrderStatus.Cancelled)
-                        {
-                            <span>· <a asp-controller="Library" asp-action="Download" asp-route-id="@item.ProductCode">Download</a></span>
-                        }
+                        case ProductType.Ebook:
+                        case ProductType.Digital:
+                            <span>@Catalog.Label(item.ProductType)</span>
+                            @if (Model.Status != OrderStatus.Cancelled)
+                            {
+                                <span>· <a asp-controller="Library" asp-action="Download" asp-route-id="@item.ProductCode">Download</a></span>
+                            }
+                            break;
+                        case ProductType.Service:
+                            <span>Service · @item.Quantity session@(item.Quantity == 1 ? "" : "s") on @item.ServiceDate?.ToString("dddd, MMMM d, yyyy")</span>
+                            @if (!string.IsNullOrEmpty(item.ServiceNotes))
+                            {
+                                <div>Your notes: @item.ServiceNotes</div>
+                            }
+                            break;
+                        default:
+                            <span>Qty: @item.Quantity × @ViewHelpers.Currency(item.Price)</span>
+                            break;
                     }
-                    else
+                    @if (Model.Status != OrderStatus.Cancelled && item.ProductType is ProductType.Physical or ProductType.Service)
                     {
-                        <span>Qty: @item.Quantity × @ViewHelpers.Currency(item.Price)</span>
+                        <span class="ms-1 badge @(item.Fulfilled ? "text-bg-success" : "text-bg-light border")">
+                            @(item.Fulfilled ? (item.ProductType == ProductType.Service ? "Completed" : "Shipped") : (item.ProductType == ProductType.Service ? "Booked" : "Preparing"))
+                        </span>
                     }
                 </div>
             </div>

@@ -66,6 +66,11 @@ namespace e_Commerce_application.Models
 
         public bool HasPhysicalItems => Products.Any(p => p.ProductType == ProductType.Physical);
 
+        public bool HasServiceItems => Products.Any(p => p.ProductType == ProductType.Service);
+
+        // Items that need a person to ship or perform them.
+        public bool HasFulfilmentItems => Products.Any(p => p.ProductType is ProductType.Physical or ProductType.Service);
+
         public Order() { }
 
         public Order(int orderNo, DateTime orderDate, decimal invoicePrice, List<OrderItem> products)

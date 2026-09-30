@@ -32,6 +32,25 @@ namespace e_Commerce_application.Models
         [Range(1, 1000, ErrorMessage = "{0} must be between {1} and {2}")]
         public int Quantity { get; set; }
 
+        // Seller who fulfils this line (null for store-owned listings).
+        [BindNever]
+        [JsonIgnore]
+        public string? SellerId { get; set; }
+
+        // Services: the date the customer booked and any instructions.
+        [BindNever]
+        public DateTime? ServiceDate { get; set; }
+
+        [BindNever]
+        [StringLength(1000)]
+        public string? ServiceNotes { get; set; }
+
+        [BindNever]
+        public bool Fulfilled { get; set; }
+
+        [BindNever]
+        public DateTime? FulfilledAt { get; set; }
+
         public decimal LineTotal => Price * Quantity;
 
         public OrderItem() { }

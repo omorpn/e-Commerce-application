@@ -8,25 +8,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace e_Commerce_application.Areas.Admin.Controllers
 {
-    // Moderation of self-published ebooks.
+    // Moderation of listings created by sellers.
     [Area("Admin")]
     [Authorize(Roles = Roles.Admin)]
-    public class EbooksController : Controller
+    public class ListingsController : Controller
     {
         private readonly AppDbContext _db;
 
-        public EbooksController(AppDbContext db) => _db = db;
+        public ListingsController(AppDbContext db) => _db = db;
 
-        public async Task<IActionResult> Index(string? q, ListingStatus? status)
+        public async Task<IActionResult> Index(string? q, ListingStatus? status, ProductType? type)
         {
-            var query = _db.Products.AsNoTracking().Include(p => p.Seller).Where(p => p.Type == ProductType.Ebook).Search(q);
+            var query = _db.Products.AsNoTracking().Include(p => p.Seller).Where(p => p.SellerId != null).Search(q);
             if (status.HasValue)
             {
                 query = query.Where(p => p.Status == status.Value);
             }
+            if (type.HasValue)
+            {
+                query = query.Where(p => p.Type == type.Value);
+            }
             ViewData["q"] = q;
             ViewData["status"] = status;
-            return View(await query.OrderByDescending(p => p.UpdatedAt).ToListAsync());
+            ViewData["type"] = type;
+            return View(await query.OrderByDescending(p => p.UpdatedAt).Take(300).ToListAsync());
         }
 
         [HttpPost]
@@ -39,7 +44,7 @@ namespace e_Commerce_application.Areas.Admin.Controllers
             }
 
             product.Status = ListingStatus.Blocked;
-            product.BlockedReason = string.IsNullOrWhiteSpace(reason) ? "Removed for violating the content guidelines." : reason.Trim();
+            product.BlockedReason = string.IsNullOrWhiteSpace(reason) ? "Removed for violating the marketplace guidelines." : reason.Trim();
             product.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             this.Success($"\"{product.Name}\" was taken down.");
@@ -55,7 +60,7 @@ namespace e_Commerce_application.Areas.Admin.Controllers
                 return NotFound();
             }
 
-            // Returned to draft so the author decides when to republish.
+            // Returned to draft so the seller decides when to republish.
             product.Status = ListingStatus.Draft;
             product.BlockedReason = null;
             product.UpdatedAt = DateTime.UtcNow;
@@ -65,6 +70,6 @@ namespace e_Commerce_application.Areas.Admin.Controllers
         }
 
         private Task<Product?> FindAsync(int id) =>
-            _db.Products.FirstOrDefaultAsync(p => p.ProductCode == id && p.Type == ProductType.Ebook);
+            _db.Products.FirstOrDefaultAsync(p => p.ProductCode == id && p.SellerId != null);
     }
 }

@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace e_Commerce_application.Models
 {
-    // A catalog listing: either a physical product sold by the store or an ebook
-    // self-published by an author.
+    // A catalog listing: a physical product, an ebook, another digital download or a
+    // bookable service. Listings are owned by the store (SellerId null) or a seller.
     public class Product
     {
         [Key]
@@ -26,7 +26,10 @@ namespace e_Commerce_application.Models
 
         public decimal Price { get; set; }
 
-        // Physical products only; ebooks are never out of stock.
+        // Optional "was" price; when higher than Price the listing shows as a deal.
+        public decimal? ListPrice { get; set; }
+
+        // Physical products only.
         public int Stock { get; set; }
 
         public ListingStatus Status { get; set; } = ListingStatus.Published;
@@ -34,7 +37,7 @@ namespace e_Commerce_application.Models
         [StringLength(500)]
         public string? BlockedReason { get; set; }
 
-        // Storage key of the product image / ebook cover.
+        // Storage key of the product image / cover.
         public string? ImagePath { get; set; }
         public string? ImageContentType { get; set; }
 
@@ -47,13 +50,19 @@ namespace e_Commerce_application.Models
 
         public int? PageCount { get; set; }
 
-        // Storage key of the manuscript (PDF/EPUB).
+        // Storage key of the downloadable file (ebooks and digital products).
         public string? FilePath { get; set; }
         public string? FileName { get; set; }
         public string? FileContentType { get; set; }
         public long? FileSize { get; set; }
 
-        // Author account that published the ebook (null for store-owned listings).
+        // Service details
+        public int? DurationMinutes { get; set; }
+        public ServiceLocation? ServiceLocation { get; set; }
+
+        [StringLength(200)]
+        public string? ServiceArea { get; set; }
+
         public string? SellerId { get; set; }
         public ApplicationUser? Seller { get; set; }
 
@@ -67,9 +76,34 @@ namespace e_Commerce_application.Models
         public bool IsEbook => Type == ProductType.Ebook;
 
         [NotMapped]
+        public bool IsPhysical => Type == ProductType.Physical;
+
+        [NotMapped]
+        public bool IsService => Type == ProductType.Service;
+
+        // Ebooks and digital products are delivered as a download.
+        [NotMapped]
+        public bool IsDownloadable => Type is ProductType.Ebook or ProductType.Digital;
+
+        [NotMapped]
         public bool IsListed => Status == ListingStatus.Published;
 
         [NotMapped]
-        public bool InStock => IsEbook ? FilePath != null : Stock > 0;
+        public bool InStock => Type switch
+        {
+            ProductType.Physical => Stock > 0,
+            ProductType.Service => true,
+            _ => FilePath != null
+        };
+
+        [NotMapped]
+        public bool IsDeal => ListPrice.HasValue && ListPrice.Value > Price;
+
+        [NotMapped]
+        public int DiscountPercent => IsDeal ? (int)Math.Round(100 * (1 - Price / ListPrice!.Value)) : 0;
+
+        [NotMapped]
+        public bool NeedsCustomerAddress =>
+            IsPhysical || (IsService && ServiceLocation == Models.ServiceLocation.CustomerAddress);
     }
 }

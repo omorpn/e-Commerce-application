@@ -48,6 +48,8 @@ namespace e_Commerce_application.Controllers
                 State = last?.State,
                 PostalCode = last?.PostalCode,
                 Country = last?.Country,
+                Bookings = cart.Lines.Where(l => l.Product.IsService)
+                    .Select(l => new ServiceBookingInput { ProductCode = l.Product.ProductCode }).ToList(),
                 Cart = cart
             });
         }
@@ -67,14 +69,30 @@ namespace e_Commerce_application.Controllers
                 return RedirectToAction("Index", "Cart");
             }
 
-            if (model.Cart.HasPhysical)
+            // One booking (date + notes) per service in the cart.
+            var bookings = model.Cart.Lines.Where(l => l.Product.IsService).Select(l =>
+                model.Bookings.FirstOrDefault(b => b.ProductCode == l.Product.ProductCode) ?? new ServiceBookingInput { ProductCode = l.Product.ProductCode }).ToList();
+            for (var i = 0; i < bookings.Count; i++)
             {
-                if (string.IsNullOrWhiteSpace(model.AddressLine)) ModelState.AddModelError(nameof(model.AddressLine), "The Address field is required for shipping.");
-                if (string.IsNullOrWhiteSpace(model.City)) ModelState.AddModelError(nameof(model.City), "The City field is required for shipping.");
-                if (string.IsNullOrWhiteSpace(model.Country)) ModelState.AddModelError(nameof(model.Country), "The Country field is required for shipping.");
+                if (bookings[i].Date == null)
+                {
+                    ModelState.AddModelError($"Bookings[{i}].Date", "Please choose a date.");
+                }
+                else if (bookings[i].Date!.Value.Date < OrderService.EarliestServiceDate)
+                {
+                    ModelState.AddModelError($"Bookings[{i}].Date", "Choose tomorrow or a later date.");
+                }
+            }
+            model.Bookings = bookings;
+
+            if (model.Cart.NeedsAddress)
+            {
+                if (string.IsNullOrWhiteSpace(model.AddressLine)) ModelState.AddModelError(nameof(model.AddressLine), "The Address field is required.");
+                if (string.IsNullOrWhiteSpace(model.City)) ModelState.AddModelError(nameof(model.City), "The City field is required.");
+                if (string.IsNullOrWhiteSpace(model.Country)) ModelState.AddModelError(nameof(model.Country), "The Country field is required.");
             }
 
-            var allowedPayments = model.Cart.HasPhysical
+            var allowedPayments = model.Cart.NeedsAddress
                 ? new[] { CheckoutViewModel.PayByCard, CheckoutViewModel.PayOnDelivery }
                 : new[] { CheckoutViewModel.PayByCard };
             if (!allowedPayments.Contains(model.PaymentMethod))
@@ -93,13 +111,17 @@ namespace e_Commerce_application.Controllers
                 CustomerName = model.FullName.Trim(),
                 Email = model.Email.Trim(),
                 Phone = model.Phone,
-                AddressLine = model.Cart.HasPhysical ? model.AddressLine : null,
-                City = model.Cart.HasPhysical ? model.City : null,
-                State = model.Cart.HasPhysical ? model.State : null,
-                PostalCode = model.Cart.HasPhysical ? model.PostalCode : null,
-                Country = model.Cart.HasPhysical ? model.Country : null,
+                AddressLine = model.Cart.NeedsAddress ? model.AddressLine : null,
+                City = model.Cart.NeedsAddress ? model.City : null,
+                State = model.Cart.NeedsAddress ? model.State : null,
+                PostalCode = model.Cart.NeedsAddress ? model.PostalCode : null,
+                Country = model.Cart.NeedsAddress ? model.Country : null,
                 PaymentMethod = model.PaymentMethod,
-                Lines = model.Cart.Lines.Select(l => new OrderLineRequest(l.Product.ProductCode, l.EffectiveQuantity)).ToList()
+                Lines = model.Cart.Lines.Select(l =>
+                {
+                    var booking = bookings.FirstOrDefault(b => b.ProductCode == l.Product.ProductCode);
+                    return new OrderLineRequest(l.Product.ProductCode, l.EffectiveQuantity, null, booking?.Date, booking?.Notes);
+                }).ToList()
             });
 
             if (!result.Succeeded)

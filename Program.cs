@@ -1,6 +1,8 @@
 using e_Commerce_application.Data;
 using e_Commerce_application.Models;
 using e_Commerce_application.Services;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Localization;
@@ -11,8 +13,22 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Hosting platforms such as Render and Railway say which port to listen on via PORT.
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
+
 var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=ecommerce.db";
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
+
+// Keep sign-in cookies valid across restarts when a persistent folder is configured.
+var keysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(keysPath))
+{
+    builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+}
 
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     {
@@ -30,6 +46,7 @@ builder.Services.AddControllersWithViews(options =>
     })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddRazorPages();
+builder.Services.AddHealthChecks();
 
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
@@ -39,15 +56,26 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = FileSignatures.MaxManuscriptBytes + FileSignatures.MaxImageBytes + 1024 * 1024);
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = FileSignatures.MaxUploadRequestBytes);
 builder.Services.Configure<PublishingOptions>(builder.Configuration.GetSection("Publishing"));
+
+// The app usually runs behind a TLS-terminating proxy in production.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<IFileStorage, LocalFileStorage>();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<ListingService>();
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
@@ -71,6 +99,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseSession();
 
+app.MapHealthChecks("/healthz");
 app.MapControllerRoute("areas", "{area:exists}/{controller=Dashboard}/{action=Index}/{id?}");
 app.MapControllerRoute("default", "{controller=Home}/{action=Index}/{id?}");
 app.MapRazorPages();

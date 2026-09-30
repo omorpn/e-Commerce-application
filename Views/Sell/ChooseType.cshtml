@@ -1,0 +1,24 @@
+@{
+    ViewData["Title"] = "Create a listing";
+    var options = new[]
+    {
+        (ProductType.Physical, "Physical product", "Items you ship to customers: electronics, fashion, home goods, food and more. You manage stock."),
+        (ProductType.Service, "Service", "Work you perform: cleaning, repairs, lessons, design, consulting. Customers book a date."),
+        (ProductType.Digital, "Digital download", "Files customers download instantly: courses, music, templates, software, photos, video."),
+        (ProductType.Ebook, "eBook", "Self-publish a PDF or EPUB book with your own cover, price and royalties.")
+    };
+}
+<div class="mt-3">
+    <a asp-action="Index" class="small"><i class="bi bi-chevron-left"></i> Seller Central</a>
+    <h1 class="h3">What would you like to sell?</h1>
+</div>
+<div class="type-grid mt-3">
+    @foreach (var (type, title, text) in options)
+    {
+        <a class="type-card" asp-action="Create" asp-route-type="@type" data-testid="type-@type">
+            <span class="type-card-icon"><i class="bi @ViewHelpers.TypeIcon(type)"></i></span>
+            <strong>@title</strong>
+            <span class="small text-secondary">@text</span>
+        </a>
+    }
+</div>

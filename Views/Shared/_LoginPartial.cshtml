@@ -14,7 +14,8 @@
         <ul class="dropdown-menu dropdown-menu-end shadow">
             <li><a class="dropdown-item" asp-controller="Orders" asp-action="Index"><i class="bi bi-box-seam me-2"></i>Your orders</a></li>
             <li><a class="dropdown-item" asp-controller="Library" asp-action="Index"><i class="bi bi-book me-2"></i>Your library</a></li>
-            <li><a class="dropdown-item" asp-controller="Publish" asp-action="Index"><i class="bi bi-pencil-square me-2"></i>Publishing dashboard</a></li>
+            <li><a class="dropdown-item" asp-controller="Wishlist" asp-action="Index"><i class="bi bi-heart me-2"></i>Your wish list</a></li>
+            <li><a class="dropdown-item" asp-controller="Sell" asp-action="Index"><i class="bi bi-shop me-2"></i>Seller Central</a></li>
             <li><a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index"><i class="bi bi-person-gear me-2"></i>Account settings</a></li>
             @if (User.IsInRole(Roles.Admin))
             {

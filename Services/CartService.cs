@@ -69,15 +69,23 @@ namespace e_Commerce_application.Services
                 }
 
                 var line = new CartLine { Product = product, Quantity = quantity };
-                if (!product.IsListed)
+                if (!product.IsListed || !product.InStock && !product.IsPhysical)
                 {
                     line.Problem = "This item is no longer available.";
                 }
-                else if (product.IsEbook && owned.Contains(code))
+                else if (userId != null && product.SellerId == userId)
                 {
-                    line.Problem = "You already own this ebook.";
+                    line.Problem = "This is your own listing.";
                 }
-                else if (!product.IsEbook && product.Stock < quantity)
+                else if (product.IsDownloadable && owned.Contains(code))
+                {
+                    line.Problem = "You already own this item.";
+                }
+                else if (product.IsService && quantity > OrderService.MaxServiceQuantity)
+                {
+                    line.Problem = $"You can book at most {OrderService.MaxServiceQuantity} sessions at once.";
+                }
+                else if (product.IsPhysical && product.Stock < quantity)
                 {
                     line.Problem = product.Stock == 0
                         ? "Out of stock."

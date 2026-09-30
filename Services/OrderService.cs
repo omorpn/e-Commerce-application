@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace e_Commerce_application.Services
 {
-    public record OrderLineRequest(int ProductCode, int Quantity, decimal? ExpectedPrice = null);
+    public record OrderLineRequest(int ProductCode, int Quantity, decimal? ExpectedPrice = null,
+        DateTime? ServiceDate = null, string? ServiceNotes = null);
 
     public class PlaceOrderRequest
     {
@@ -23,8 +24,8 @@ namespace e_Commerce_application.Services
         // When set, the computed total must match (used by the JSON API).
         public decimal? ExpectedTotal { get; set; }
 
-        // Ebooks need a signed-in user to deliver to; the anonymous API can't buy them.
-        public bool AllowDigital { get; set; } = true;
+        // Downloads and services are tied to a customer account; the anonymous API can't buy them.
+        public bool AllowAccountItems { get; set; } = true;
 
         public List<OrderLineRequest> Lines { get; set; } = new();
     }
@@ -44,15 +45,19 @@ namespace e_Commerce_application.Services
         public const string InvoiceMismatchError =
             "InvoicePrice doesn't match with the total cost of the specified products in the order.";
 
+        public const int MaxServiceQuantity = 20;
+
         private readonly AppDbContext _db;
 
         public OrderService(AppDbContext db) => _db = db;
+
+        public static DateTime EarliestServiceDate => DateTime.UtcNow.Date.AddDays(1);
 
         public async Task<ServiceResult<Order>> PlaceOrderAsync(PlaceOrderRequest request)
         {
             var lines = request.Lines
                 .GroupBy(l => l.ProductCode)
-                .Select(g => new OrderLineRequest(g.Key, g.Sum(l => l.Quantity), g.First().ExpectedPrice))
+                .Select(g => g.First() with { Quantity = g.Sum(l => l.Quantity) })
                 .ToList();
 
             if (lines.Count == 0)
@@ -83,20 +88,47 @@ namespace e_Commerce_application.Services
                     errors.Add($"Quantity for '{product.Name}' must be at least 1.");
                     continue;
                 }
-
-                if (product.IsEbook)
+                if (product.SellerId != null && product.SellerId == request.UserId)
                 {
-                    if (!request.AllowDigital || request.UserId == null)
-                    {
-                        errors.Add($"Product {product.ProductCode} is an ebook and can only be purchased in the store while signed in.");
-                        continue;
-                    }
+                    errors.Add($"You can't buy your own listing '{product.Name}'.");
+                    continue;
+                }
+                if (!product.IsPhysical && (!request.AllowAccountItems || request.UserId == null))
+                {
+                    errors.Add(product.IsService
+                        ? $"Product {product.ProductCode} is a service and can only be booked in the store while signed in."
+                        : $"Product {product.ProductCode} is {(product.IsEbook ? "an ebook" : "a digital download")} and can only be purchased in the store while signed in.");
+                    continue;
+                }
+
+                DateTime? serviceDate = null;
+                if (product.IsDownloadable)
+                {
                     if (owned.Contains(product.ProductCode))
                     {
                         errors.Add($"You already own '{product.Name}'.");
                         continue;
                     }
                     quantity = 1;
+                }
+                else if (product.IsService)
+                {
+                    if (quantity > MaxServiceQuantity)
+                    {
+                        errors.Add($"You can book at most {MaxServiceQuantity} sessions of '{product.Name}' at once.");
+                        continue;
+                    }
+                    if (line.ServiceDate == null)
+                    {
+                        errors.Add($"Choose a date for '{product.Name}'.");
+                        continue;
+                    }
+                    serviceDate = DateTime.SpecifyKind(line.ServiceDate.Value.Date, DateTimeKind.Utc);
+                    if (serviceDate < EarliestServiceDate)
+                    {
+                        errors.Add($"The date for '{product.Name}' must be tomorrow or later.");
+                        continue;
+                    }
                 }
                 else if (product.Stock < quantity)
                 {
@@ -117,8 +149,14 @@ namespace e_Commerce_application.Services
                     ProductCode = product.ProductCode,
                     ProductName = product.Name,
                     ProductType = product.Type,
+                    SellerId = product.SellerId,
                     Price = product.Price,
-                    Quantity = quantity
+                    Quantity = quantity,
+                    ServiceDate = serviceDate,
+                    ServiceNotes = product.IsService ? line.ServiceNotes?.Trim() : null,
+                    // Downloads are delivered the moment the order is placed.
+                    Fulfilled = product.IsDownloadable,
+                    FulfilledAt = product.IsDownloadable ? DateTime.UtcNow : null
                 });
             }
 
@@ -163,14 +201,13 @@ namespace e_Commerce_application.Services
                 PostalCode = request.PostalCode,
                 Country = request.Country,
                 PaymentMethod = request.PaymentMethod,
-                // Digital-only orders are fulfilled immediately.
-                Status = items.Any(i => i.ProductType == ProductType.Physical) ? OrderStatus.Pending : OrderStatus.Completed,
+                Status = items.All(i => i.Fulfilled) ? OrderStatus.Completed : OrderStatus.Pending,
                 UpdatedAt = DateTime.UtcNow
             };
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
 
-            foreach (var item in items.Where(i => i.ProductType == ProductType.Ebook))
+            foreach (var item in items.Where(i => i.ProductType is ProductType.Ebook or ProductType.Digital))
             {
                 _db.LibraryEntries.Add(new LibraryEntry
                 {
@@ -185,20 +222,20 @@ namespace e_Commerce_application.Services
             return ServiceResult<Order>.Ok(order);
         }
 
-        public async Task<ServiceResult<LibraryEntry>> ClaimFreeEbookAsync(string userId, int productCode)
+        public async Task<ServiceResult<LibraryEntry>> ClaimFreeAsync(string userId, int productCode)
         {
             var product = await _db.Products.FindAsync(productCode);
-            if (product == null || !product.IsEbook || !product.IsListed)
+            if (product == null || !product.IsDownloadable || !product.IsListed || product.FilePath == null)
             {
-                return ServiceResult<LibraryEntry>.Fail("This ebook is not available.");
+                return ServiceResult<LibraryEntry>.Fail("This item is not available.");
             }
             if (product.Price != 0)
             {
-                return ServiceResult<LibraryEntry>.Fail("This ebook isn't free.");
+                return ServiceResult<LibraryEntry>.Fail("This item isn't free.");
             }
             if (await _db.LibraryEntries.AnyAsync(l => l.UserId == userId && l.ProductCode == productCode))
             {
-                return ServiceResult<LibraryEntry>.Fail("This ebook is already in your library.");
+                return ServiceResult<LibraryEntry>.Fail("This item is already in your library.");
             }
 
             var entry = new LibraryEntry { UserId = userId, ProductCode = productCode };
@@ -207,8 +244,11 @@ namespace e_Commerce_application.Services
             return ServiceResult<LibraryEntry>.Ok(entry);
         }
 
+        // Customers may cancel until anything that needs shipping or performing has been fulfilled.
         public static bool CustomerCanCancel(Order order) =>
-            order.Status is OrderStatus.Pending or OrderStatus.Processing && order.HasPhysicalItems;
+            order.Status is OrderStatus.Pending or OrderStatus.Processing
+            && order.HasFulfilmentItems
+            && !order.Products.Any(i => i.Fulfilled && i.ProductType is ProductType.Physical or ProductType.Service);
 
         public async Task<ServiceResult<Order>> UpdateStatusAsync(int orderNo, OrderStatus status)
         {
@@ -230,7 +270,7 @@ namespace e_Commerce_application.Services
 
             if (status == OrderStatus.Cancelled)
             {
-                // Return physical stock and revoke ebook access granted by this order.
+                // Return physical stock and revoke download access granted by this order.
                 foreach (var item in order.Products.Where(i => i.ProductType == ProductType.Physical))
                 {
                     await _db.Products.Where(p => p.ProductCode == item.ProductCode)
@@ -238,11 +278,48 @@ namespace e_Commerce_application.Services
                 }
                 await _db.LibraryEntries.Where(l => l.OrderNo == order.OrderNo).ExecuteDeleteAsync();
             }
+            else if (status is OrderStatus.Delivered or OrderStatus.Completed)
+            {
+                foreach (var item in order.Products.Where(i => !i.Fulfilled))
+                {
+                    item.Fulfilled = true;
+                    item.FulfilledAt = DateTime.UtcNow;
+                }
+            }
 
             order.Status = status;
             order.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
             await transaction.CommitAsync();
+            return ServiceResult<Order>.Ok(order);
+        }
+
+        // A seller marks one of their order lines as shipped (products) or done (services).
+        public async Task<ServiceResult<Order>> MarkFulfilledAsync(int itemId, string sellerId)
+        {
+            var item = await _db.OrderItems.FirstOrDefaultAsync(i => i.Id == itemId && i.SellerId == sellerId);
+            if (item == null)
+            {
+                return ServiceResult<Order>.Fail("Order item not found.");
+            }
+
+            var order = await _db.Orders.Include(o => o.Products).FirstAsync(o => o.OrderNo == item.OrderNo);
+            if (order.Status == OrderStatus.Cancelled)
+            {
+                return ServiceResult<Order>.Fail("This order was cancelled.");
+            }
+            if (item.Fulfilled)
+            {
+                return ServiceResult<Order>.Ok(order);
+            }
+
+            item.Fulfilled = true;
+            item.FulfilledAt = DateTime.UtcNow;
+            order.Status = order.Products.All(i => i.Fulfilled)
+                ? (order.HasPhysicalItems ? OrderStatus.Shipped : OrderStatus.Completed)
+                : OrderStatus.Processing;
+            order.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
             return ServiceResult<Order>.Ok(order);
         }
     }

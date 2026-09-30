@@ -43,7 +43,7 @@ namespace e_Commerce_application.Controllers.Api
         }
 
         private ProductDto ToDto(Product p) => new(p.ProductCode, p.Type, p.Name, p.AuthorName, p.Category, p.Price,
-            p.IsEbook ? null : p.Stock, p.Description,
+            p.IsPhysical ? p.Stock : null, p.Description,
             p.ImagePath == null ? null : Url.Action("Image", "Media", new { id = p.ProductCode }, Request.Scheme));
     }
 }

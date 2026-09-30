@@ -44,7 +44,14 @@ namespace e_Commerce_application.Areas.Admin.Controllers
         {
             var order = await _db.Orders.AsNoTracking().Include(o => o.Products).Include(o => o.User)
                 .FirstOrDefaultAsync(o => o.OrderNo == id);
-            return order == null ? NotFound() : View(order);
+            if (order == null)
+            {
+                return NotFound();
+            }
+            var sellerIds = order.Products.Where(i => i.SellerId != null).Select(i => i.SellerId).Distinct().ToList();
+            ViewData["Sellers"] = await _db.Users.Where(u => sellerIds.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id, u => u.SellerName ?? u.Email ?? u.Id);
+            return View(order);
         }
 
         [HttpPost]

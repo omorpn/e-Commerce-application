@@ -1,0 +1,213 @@
+@model ListingFormViewModel
+@inject Microsoft.Extensions.Options.IOptions<PublishingOptions> Rates
+@{
+    var isNew = Model.ProductCode == null;
+    var isAdmin = ViewContext.RouteData.Values["area"]?.ToString() == "Admin";
+    var label = Catalog.Label(Model.Type).ToLowerInvariant();
+    ViewData["Title"] = isNew ? $"New {label}" : $"Edit {Model.Name}";
+    var isDownload = Model.Type is ProductType.Ebook or ProductType.Digital;
+    var fileHelp = Model.Type == ProductType.Ebook
+        ? "PDF or EPUB, max 50 MB"
+        : "PDF, EPUB, ZIP, MP3, WAV, MP4, JPG, PNG or WEBP, max 100 MB";
+    var fileAccept = Model.Type == ProductType.Ebook
+        ? ".pdf,.epub"
+        : ".pdf,.epub,.zip,.mp3,.wav,.mp4,.m4a,.jpg,.jpeg,.png,.webp";
+}
+@if (isAdmin)
+{
+    <partial name="_AdminNav" />
+}
+<div class="mt-3">
+    <a href="@(isAdmin ? Url.Action("Index", "Products", new { area = "Admin" }) : Url.Action("Index", "Sell"))" class="small"><i class="bi bi-chevron-left"></i> @(isAdmin ? "Store listings" : "Seller Central")</a>
+    <h1 class="h3"><i class="bi @ViewHelpers.TypeIcon(Model.Type)"></i> @(isNew ? $"New {label}" : $"Edit {label}")</h1>
+    @if (Model.Status == ListingStatus.Blocked)
+    {
+        <div class="alert alert-danger small">This listing was taken down by the store team: @Model.BlockedReason</div>
+    }
+</div>
+
+<form asp-action="@(isNew ? "Create" : "Edit")" asp-route-id="@Model.ProductCode" method="post" enctype="multipart/form-data" class="row g-4">
+    <input type="hidden" asp-for="Type" />
+    <div class="col-lg-8">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger small empty-hidden"></div>
+
+        <div class="panel mb-3">
+            <h2 class="h5">Details</h2>
+            <div class="mb-3">
+                <label asp-for="Name" class="form-label">@(Model.Type == ProductType.Service ? "Service name" : "Title")</label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+            @if (Model.Type == ProductType.Ebook)
+            {
+                <div class="mb-3">
+                    <label asp-for="Subtitle" class="form-label">Subtitle <span class="text-secondary">(optional)</span></label>
+                    <input asp-for="Subtitle" class="form-control" />
+                </div>
+                <div class="mb-3">
+                    <label asp-for="AuthorName" class="form-label"></label>
+                    <input asp-for="AuthorName" class="form-control" />
+                    <span asp-validation-for="AuthorName" class="text-danger small"></span>
+                </div>
+            }
+            <div class="mb-3">
+                <label asp-for="Description" class="form-label">Description</label>
+                <textarea asp-for="Description" class="form-control" rows="6"></textarea>
+                <div class="form-text">Tell customers what they get and why they'll love it.</div>
+                <span asp-validation-for="Description" class="text-danger small"></span>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="Category" class="form-label">Category</label>
+                    <select asp-for="Category" asp-items="@(new SelectList(Catalog.CategoriesFor(Model.Type)))" class="form-select">
+                        <option value="">Choose...</option>
+                    </select>
+                    <span asp-validation-for="Category" class="text-danger small"></span>
+                </div>
+                @if (Model.Type == ProductType.Ebook)
+                {
+                    <div class="col-md-3">
+                        <label asp-for="Language" class="form-label"></label>
+                        <select asp-for="Language" asp-items="@(new SelectList(Catalog.Languages))" class="form-select"></select>
+                        <span asp-validation-for="Language" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="PageCount" class="form-label">Pages</label>
+                        <input asp-for="PageCount" class="form-control" />
+                        <span asp-validation-for="PageCount" class="text-danger small"></span>
+                    </div>
+                }
+                @if (Model.Type == ProductType.Physical)
+                {
+                    <div class="col-md-6">
+                        <label asp-for="Stock" class="form-label"></label>
+                        <input asp-for="Stock" class="form-control" min="0" />
+                        <span asp-validation-for="Stock" class="text-danger small"></span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Model.Type == ProductType.Service)
+        {
+            <div class="panel mb-3">
+                <h2 class="h5">How the service works</h2>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label asp-for="DurationMinutes" class="form-label"></label>
+                        <input asp-for="DurationMinutes" class="form-control" min="5" step="5" />
+                        <div class="form-text">60 = 1 hour, 1440 = 1 day</div>
+                        <span asp-validation-for="DurationMinutes" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-8">
+                        <label asp-for="ServiceLocation" class="form-label"></label>
+                        <select asp-for="ServiceLocation" class="form-select">
+                            <option value="">Choose...</option>
+                            @foreach (var location in Enum.GetValues<ServiceLocation>())
+                            {
+                                <option value="@location" selected="@(Model.ServiceLocation == location)">@Catalog.LocationLabel(location)</option>
+                            }
+                        </select>
+                        <span asp-validation-for="ServiceLocation" class="text-danger small"></span>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="ServiceArea" class="form-label"></label>
+                        <input asp-for="ServiceArea" class="form-control" placeholder="e.g. Lagos and Abuja, or Worldwide" />
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="panel mb-3">
+            <h2 class="h5">Files</h2>
+            @if (isDownload)
+            {
+                <div class="mb-3">
+                    <label asp-for="File" class="form-label">@(Model.Type == ProductType.Ebook ? "Manuscript" : "File customers download") (@fileHelp)</label>
+                    <input asp-for="File" type="file" class="form-control" accept="@fileAccept" />
+                    @if (Model.ExistingFileName != null)
+                    {
+                        <div class="form-text">Current file: <strong>@Model.ExistingFileName</strong>. Upload a new file to replace it.</div>
+                    }
+                    <span asp-validation-for="File" class="text-danger small"></span>
+                </div>
+            }
+            <div class="mb-1">
+                <label asp-for="Image" class="form-label">@(Model.Type == ProductType.Ebook ? "Cover" : "Image") (JPG, PNG or WEBP, max 5 MB)</label>
+                <input asp-for="Image" type="file" class="form-control" accept=".jpg,.jpeg,.png,.webp" data-preview="#image-preview" />
+                <div class="form-text">@(Model.HasImage ? "Upload a new image to replace the current one." : Model.Type == ProductType.Ebook ? "No cover? We'll generate a clean typographic cover for you." : "No image? A category icon is shown instead.")</div>
+                <span asp-validation-for="Image" class="text-danger small"></span>
+            </div>
+            @if (Model.HasImage)
+            {
+                <div class="form-check mt-2">
+                    <input asp-for="RemoveImage" class="form-check-input" />
+                    <label asp-for="RemoveImage" class="form-check-label"></label>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="panel mb-3">
+            <h2 class="h5">Preview</h2>
+            <div class="detail-media small-media" id="image-preview">
+                @if (Model.HasImage && Model.ProductCode.HasValue)
+                {
+                    <img src="/Media/Image/@Model.ProductCode?v=@DateTime.UtcNow.Ticks" alt="Current image" class="product-img @(Model.Type == ProductType.Ebook ? "is-cover" : "")" />
+                }
+                else if (Model.Type == ProductType.Ebook)
+                {
+                    <div class="book-cover" style="--cover: linear-gradient(160deg, @ViewHelpers.CoverGradient(string.IsNullOrEmpty(Model.Name) ? "New book" : Model.Name))">
+                        <span class="book-title">@(string.IsNullOrEmpty(Model.Name) ? "Your title" : Model.Name)</span>
+                        <span class="book-author">@Model.AuthorName</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="product-placeholder" aria-hidden="true"><i class="bi @ViewHelpers.TypeIcon(Model.Type)"></i></div>
+                }
+            </div>
+        </div>
+        <div class="panel">
+            <h2 class="h5">Pricing</h2>
+            <label asp-for="Price" class="form-label">@(Model.Type == ProductType.Service ? "Price per session (USD)" : "Price (USD)")</label>
+            <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input asp-for="Price" class="form-control" step="0.01" min="0" data-royalty-input />
+            </div>
+            <span asp-validation-for="Price" class="text-danger small"></span>
+            @if (isDownload)
+            {
+                <div class="form-text">Enter 0 to give it away for free.</div>
+            }
+            <label asp-for="ListPrice" class="form-label mt-3"></label>
+            <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input asp-for="ListPrice" class="form-control" step="0.01" min="0" />
+            </div>
+            <div class="form-text">Set a higher "was" price to show your listing in Today's Deals.</div>
+            <span asp-validation-for="ListPrice" class="text-danger small"></span>
+            @if (!isAdmin)
+            {
+                <div class="small mt-2">You earn about <strong data-royalty-output data-rate="@Rates.Value.RateFor(Model.Type).ToString(System.Globalization.CultureInfo.InvariantCulture)">$0.00</strong> per sale.</div>
+            }
+            <hr />
+            <div class="d-grid gap-2">
+                @if (isNew || Model.Status == ListingStatus.Draft)
+                {
+                    <button class="btn btn-buy" type="submit" name="publishNow" value="true" data-testid="publish-now">Publish now</button>
+                    <button class="btn btn-light border" type="submit">Save as draft</button>
+                }
+                else
+                {
+                    <button class="btn btn-buy" type="submit">Save changes</button>
+                }
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

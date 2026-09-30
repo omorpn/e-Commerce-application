@@ -1,14 +1,25 @@
 @model List<Product>
 @{
-    ViewData["Title"] = "Moderate ebooks";
+    ViewData["Title"] = "Seller listings";
     var status = ViewData["status"] as ListingStatus?;
+    var type = ViewData["type"] as ProductType?;
 }
 <partial name="_AdminNav" />
 <div class="panel mt-3">
     <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
-        <h1 class="h4 mb-0">eBooks</h1>
+        <div>
+            <h1 class="h4 mb-0">Seller listings</h1>
+            <div class="small text-secondary">Review what sellers publish and take down anything that breaks the rules.</div>
+        </div>
         <form method="get" class="d-flex gap-2">
-            <input name="q" value="@ViewData["q"]" class="form-control form-control-sm" placeholder="Title or author" />
+            <input name="q" value="@ViewData["q"]" class="form-control form-control-sm" placeholder="Title, author or text" />
+            <select name="type" class="form-select form-select-sm">
+                <option value="">All types</option>
+                @foreach (var t in Enum.GetValues<ProductType>())
+                {
+                    <option value="@t" selected="@(type == t)">@Catalog.Label(t)</option>
+                }
+            </select>
             <select name="status" class="form-select form-select-sm">
                 <option value="">Any status</option>
                 @foreach (var s in Enum.GetValues<ListingStatus>())
@@ -21,7 +32,7 @@
     </div>
     <div class="table-responsive">
         <table class="table align-middle">
-            <thead><tr><th style="width:56px"></th><th>Title</th><th>Publisher account</th><th class="text-end">Price</th><th>Status</th><th>Moderation</th></tr></thead>
+            <thead><tr><th style="width:56px"></th><th>Listing</th><th>Seller</th><th class="text-end">Price</th><th>Status</th><th>Moderation</th></tr></thead>
             <tbody>
                 @foreach (var p in Model)
                 {
@@ -29,9 +40,18 @@
                         <td><div class="mini-cover"><partial name="_ProductImage" model="p" /></div></td>
                         <td>
                             <a asp-area="" asp-controller="Products" asp-action="Details" asp-route-id="@p.ProductCode">@p.Name</a>
-                            <div class="small text-secondary">by @p.AuthorName · @p.Category · <a asp-area="" asp-controller="Library" asp-action="Download" asp-route-id="@p.ProductCode">file</a></div>
+                            <div class="small text-secondary">
+                                <i class="bi @ViewHelpers.TypeIcon(p.Type)"></i> @Catalog.Label(p.Type) · @p.Category
+                                @if (p.IsDownloadable)
+                                {
+                                    <span>· <a asp-area="" asp-controller="Library" asp-action="Download" asp-route-id="@p.ProductCode">file</a></span>
+                                }
+                            </div>
                         </td>
-                        <td class="small">@(p.Seller?.Email ?? "Store (sample)")</td>
+                        <td class="small">
+                            <a asp-area="" asp-controller="Sellers" asp-action="Details" asp-route-id="@p.SellerId">@p.Seller?.SellerName</a>
+                            <div class="text-secondary">@p.Seller?.Email</div>
+                        </td>
                         <td class="text-end">@ViewHelpers.Price(p.Price)</td>
                         <td>
                             <span class="badge @ViewHelpers.ListingBadge(p.Status)">@p.Status</span>
@@ -59,7 +79,7 @@
                 }
                 @if (Model.Count == 0)
                 {
-                    <tr><td colspan="6" class="text-secondary">No ebooks found.</td></tr>
+                    <tr><td colspan="6" class="text-secondary">No seller listings yet.</td></tr>
                 }
             </tbody>
         </table>

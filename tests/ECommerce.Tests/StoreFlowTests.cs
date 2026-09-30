@@ -16,6 +16,10 @@ namespace ECommerce.Tests
         [InlineData("/Products")]
         [InlineData("/Products?dept=ebooks&sort=price-desc")]
         [InlineData("/Products?q=bottle")]
+        [InlineData("/Products?dept=services")]
+        [InlineData("/Products?dept=digital")]
+        [InlineData("/Products?dept=deals&sort=discount")]
+        [InlineData("/healthz")]
         [InlineData("/Cart")]
         [InlineData("/Home/Privacy")]
         [InlineData("/Identity/Account/Login")]
@@ -30,7 +34,8 @@ namespace ECommerce.Tests
         [InlineData("/Checkout")]
         [InlineData("/Orders")]
         [InlineData("/Library")]
-        [InlineData("/Publish")]
+        [InlineData("/Sell")]
+        [InlineData("/Wishlist")]
         [InlineData("/Admin")]
         public async Task AccountPages_RequireSignIn(string url)
         {

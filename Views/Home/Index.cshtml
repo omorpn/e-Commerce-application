@@ -1,27 +1,49 @@
 @model HomeViewModel
 @{
     ViewData["Title"] = null;
+    int Count(ProductType t) => Model.Counts.GetValueOrDefault(t);
+    string Dept(string slug, string? sort = null, decimal? maxPrice = null) =>
+        Url.Action("Index", "Products", new { dept = slug, sort, maxPrice })!;
 }
 <section class="hero">
     <div class="hero-copy">
-        <span class="hero-kicker">Everything you need, plus the books you'll love</span>
-        <h1>Shop great products. Read and publish ebooks.</h1>
-        <p>Browse electronics, home goods and fashion. Read independent authors, or publish your own ebook and start earning royalties today.</p>
+        <span class="hero-kicker">One marketplace for everything</span>
+        <h1>Buy products, book services, download anything.</h1>
+        <p>Shop everyday products, hire trusted professionals, and get ebooks, courses, music and templates the moment you pay. Got something to sell? Open your shop in minutes.</p>
         <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-buy btn-lg" asp-controller="Products" asp-action="Index" asp-route-dept="products">Shop now</a>
-            <a class="btn btn-outline-light btn-lg" asp-controller="Publish" asp-action="Index"><i class="bi bi-pencil-square"></i> Publish an ebook</a>
+            <a class="btn btn-buy btn-lg" href="@Dept("deals")">See today's deals</a>
+            <a class="btn btn-outline-light btn-lg" asp-controller="Sell" asp-action="Index"><i class="bi bi-shop"></i> Start selling</a>
         </div>
     </div>
     <div class="hero-art" aria-hidden="true">
-        <i class="bi bi-headphones"></i><i class="bi bi-book-half"></i><i class="bi bi-bag"></i>
+        <i class="bi bi-bag"></i><i class="bi bi-calendar-check"></i><i class="bi bi-cloud-download"></i>
     </div>
+</section>
+
+<section class="dept-strip">
+    <a class="dept-card" href="@Dept("products")">
+        <span class="dept-card-icon"><i class="bi bi-box-seam"></i></span>
+        <span><strong>Products</strong><small>@Count(ProductType.Physical) items delivered to your door</small></span>
+    </a>
+    <a class="dept-card" href="@Dept("services")">
+        <span class="dept-card-icon"><i class="bi bi-calendar-check"></i></span>
+        <span><strong>Services</strong><small>@Count(ProductType.Service) pros: cleaning, repairs, lessons &amp; more</small></span>
+    </a>
+    <a class="dept-card" href="@Dept("digital")">
+        <span class="dept-card-icon"><i class="bi bi-cloud-download"></i></span>
+        <span><strong>Digital downloads</strong><small>@Count(ProductType.Digital) templates, music, courses, software</small></span>
+    </a>
+    <a class="dept-card" href="@Dept("ebooks")">
+        <span class="dept-card-icon"><i class="bi bi-book"></i></span>
+        <span><strong>eBook Store</strong><small>@Count(ProductType.Ebook) books from independent authors</small></span>
+    </a>
 </section>
 
 <section class="tile-grid">
     <div class="tile">
-        <h2 class="h5">Shop by department</h2>
+        <h2 class="h5">Shop by category</h2>
         <div class="dept-grid">
-            @foreach (var category in Model.ProductCategories.Take(4))
+            @foreach (var category in new[] { "Electronics", "Home & Kitchen", "Fashion", "Computers" })
             {
                 <a class="dept" asp-controller="Products" asp-action="Index" asp-route-dept="products" asp-route-category="@category">
                     <span class="dept-icon"><i class="bi @ViewHelpers.CategoryIcon(category)"></i></span>
@@ -29,90 +51,55 @@
                 </a>
             }
         </div>
-        <a class="small" asp-controller="Products" asp-action="Index" asp-route-dept="products">See all products</a>
+        <a class="small" href="@Dept("products")">See all products</a>
     </div>
     <div class="tile">
-        <h2 class="h5">eBook genres</h2>
-        <div class="genre-list">
-            @foreach (var category in Model.EbookCategories)
+        <h2 class="h5">Book a professional</h2>
+        <div class="dept-grid">
+            @foreach (var category in new[] { "Home Services", "Repairs", "Tutoring & Lessons", "Design & Creative" })
             {
-                <a class="genre" asp-controller="Products" asp-action="Index" asp-route-dept="ebooks" asp-route-category="@category">@category</a>
+                <a class="dept" asp-controller="Products" asp-action="Index" asp-route-dept="services" asp-route-category="@category">
+                    <span class="dept-icon"><i class="bi @ViewHelpers.CategoryIcon(category)"></i></span>
+                    <span>@category</span>
+                </a>
             }
         </div>
-        <a class="small" asp-controller="Products" asp-action="Index" asp-route-dept="ebooks">Browse the eBook Store</a>
+        <a class="small" href="@Dept("services")">See all services</a>
     </div>
     <div class="tile tile-publish">
-        <h2 class="h5">Publish your book in minutes</h2>
-        <ol class="small ps-3 mb-3">
-            <li>Set up your author profile</li>
-            <li>Upload your PDF or EPUB and a cover</li>
-            <li>Set your price, hit publish, earn royalties</li>
-        </ol>
-        <a class="btn btn-cart btn-sm" asp-controller="Publish" asp-action="Index">Start publishing</a>
+        <h2 class="h5">Sell anything on ShopNest</h2>
+        <ul class="small ps-3 mb-3">
+            <li>Physical products you ship</li>
+            <li>Services you perform, online or in person</li>
+            <li>Ebooks, courses, music, templates and software</li>
+        </ul>
+        <p class="small text-secondary">Keep 85% of every sale (70% royalties on ebooks).</p>
+        <a class="btn btn-cart btn-sm" asp-controller="Sell" asp-action="Index">Open your shop</a>
     </div>
     <div class="tile">
         <h2 class="h5">Your account</h2>
         @if (User.Identity?.IsAuthenticated == true)
         {
             <div class="list-group list-group-flush small">
-                <a class="list-group-item list-group-item-action" asp-controller="Orders" asp-action="Index"><i class="bi bi-box-seam me-2"></i>Track your orders</a>
-                <a class="list-group-item list-group-item-action" asp-controller="Library" asp-action="Index"><i class="bi bi-book me-2"></i>Read your ebooks</a>
-                <a class="list-group-item list-group-item-action" asp-controller="Cart" asp-action="Index"><i class="bi bi-cart3 me-2"></i>View your cart</a>
+                <a class="list-group-item list-group-item-action" asp-controller="Orders" asp-action="Index"><i class="bi bi-box-seam me-2"></i>Track orders &amp; bookings</a>
+                <a class="list-group-item list-group-item-action" asp-controller="Library" asp-action="Index"><i class="bi bi-cloud-download me-2"></i>Your downloads &amp; ebooks</a>
+                <a class="list-group-item list-group-item-action" asp-controller="Wishlist" asp-action="Index"><i class="bi bi-heart me-2"></i>Your wish list</a>
+                <a class="list-group-item list-group-item-action" asp-controller="Cart" asp-action="Index"><i class="bi bi-cart3 me-2"></i>Your cart</a>
             </div>
         }
         else
         {
-            <p class="small text-secondary">Sign in for the best experience: track orders, keep your ebook library and write reviews.</p>
+            <p class="small text-secondary">Sign in to track orders and bookings, keep your downloads, save a wish list and write reviews.</p>
             <a class="btn btn-cart btn-sm w-100" asp-area="Identity" asp-page="/Account/Login">Sign in securely</a>
             <div class="small mt-2">New here? <a asp-area="Identity" asp-page="/Account/Register">Create an account</a></div>
         }
     </div>
 </section>
 
-@if (Model.Featured.Count > 0)
-{
-    <section class="shelf">
-        <div class="shelf-head">
-            <h2 class="h4">Popular products</h2>
-            <a asp-controller="Products" asp-action="Index" asp-route-dept="products">See more</a>
-        </div>
-        <div class="product-grid">
-            @foreach (var item in Model.Featured)
-            {
-                <partial name="_ProductCard" model="item" />
-            }
-        </div>
-    </section>
-}
-
-@if (Model.NewEbooks.Count > 0)
-{
-    <section class="shelf">
-        <div class="shelf-head">
-            <h2 class="h4">New in the eBook Store</h2>
-            <a asp-controller="Products" asp-action="Index" asp-route-dept="ebooks" asp-route-sort="newest">See more</a>
-        </div>
-        <div class="product-grid">
-            @foreach (var item in Model.NewEbooks)
-            {
-                <partial name="_ProductCard" model="item" />
-            }
-        </div>
-    </section>
-}
-
-@if (Model.FreeEbooks.Count > 0)
-{
-    <section class="shelf">
-        <div class="shelf-head">
-            <h2 class="h4">Free eBooks to read today</h2>
-            <a asp-controller="Products" asp-action="Index" asp-route-dept="ebooks" asp-route-maxPrice="0">See more</a>
-        </div>
-        <div class="product-grid">
-            @foreach (var item in Model.FreeEbooks)
-            {
-                <partial name="_ProductCard" model="item" />
-            }
-        </div>
-    </section>
-}
+<partial name="_Shelf" model="@(("Today's deals", "See all deals", Dept("deals", "discount"), Model.Deals))" />
+<partial name="_Shelf" model="@(("Popular products", "See more", Dept("products"), Model.Featured))" />
+<partial name="_Shelf" model="@(("Book a service", "See all services", Dept("services"), Model.Services))" />
+<partial name="_Shelf" model="@(("Digital downloads", "See more", Dept("digital"), Model.Digital))" />
+<partial name="_Shelf" model="@(("New in the eBook Store", "See more", Dept("ebooks", "newest"), Model.NewEbooks))" />
+<partial name="_Shelf" model="@(("Free to download", "See more", Url.Action("Index", "Products", new { maxPrice = 0 })!, Model.FreeDownloads))" />
+<partial name="_Shelf" model="@(("Your browsing history", "", "#", Model.RecentlyViewed))" />

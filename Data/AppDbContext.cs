@@ -13,6 +13,7 @@ namespace e_Commerce_application.Data
         public DbSet<OrderItem> OrderItems => Set<OrderItem>();
         public DbSet<LibraryEntry> LibraryEntries => Set<LibraryEntry>();
         public DbSet<Review> Reviews => Set<Review>();
+        public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
@@ -28,6 +29,7 @@ namespace e_Commerce_application.Data
             {
                 e.HasIndex(p => new { p.Type, p.Status });
                 e.HasIndex(p => p.Category);
+                e.HasIndex(p => p.SellerId);
                 e.HasOne(p => p.Seller).WithMany().HasForeignKey(p => p.SellerId).OnDelete(DeleteBehavior.SetNull);
             });
 
@@ -42,6 +44,14 @@ namespace e_Commerce_application.Data
             {
                 // No FK to Product: order lines keep a snapshot even if the listing is deleted.
                 e.HasIndex(i => i.ProductCode);
+                e.HasIndex(i => i.SellerId);
+            });
+
+            builder.Entity<WishlistItem>(e =>
+            {
+                e.HasIndex(w => new { w.UserId, w.ProductCode }).IsUnique();
+                e.HasOne(w => w.User).WithMany().HasForeignKey(w => w.UserId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(w => w.Product).WithMany().HasForeignKey(w => w.ProductCode).OnDelete(DeleteBehavior.Cascade);
             });
 
             builder.Entity<LibraryEntry>(e =>

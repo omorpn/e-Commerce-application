@@ -8,12 +8,12 @@ namespace e_Commerce_application.Models
         [StringLength(100)]
         public string? DisplayName { get; set; }
 
-        // Set once the user signs up for self-publishing.
+        // Public shop name, set once the user signs up to sell.
         [StringLength(100)]
-        public string? PenName { get; set; }
+        public string? SellerName { get; set; }
 
         [StringLength(2000)]
-        public string? AuthorBio { get; set; }
+        public string? SellerBio { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

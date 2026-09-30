@@ -31,6 +31,14 @@
                             {
                                 <div class="small text-secondary">eBook by @p.AuthorName · Instant download</div>
                             }
+                            else if (p.IsDownloadable)
+                            {
+                                <div class="small text-secondary">Digital download · Instant delivery</div>
+                            }
+                            else if (p.IsService && line.Problem == null)
+                            {
+                                <div class="small text-secondary"><i class="bi bi-calendar-check"></i> Service · @ViewHelpers.Duration(p.DurationMinutes) · choose your date at checkout</div>
+                            }
                             else if (line.Problem == null)
                             {
                                 <div class="small text-success">In Stock</div>
@@ -40,13 +48,13 @@
                                 <div class="small text-danger fw-semibold"><i class="bi bi-exclamation-circle"></i> @line.Problem</div>
                             }
                             <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                                @if (!p.IsEbook && p.Stock > 0)
+                                @if (!p.IsDownloadable && (p.IsService || p.Stock > 0))
                                 {
                                     <form asp-action="Update" method="post" class="d-flex align-items-center gap-1">
                                         <input type="hidden" name="productCode" value="@p.ProductCode" />
                                         <label class="small" for="qty-@p.ProductCode">Qty:</label>
                                         <select id="qty-@p.ProductCode" name="quantity" class="form-select form-select-sm qty-select" onchange="this.form.submit()">
-                                            @for (var i = 1; i <= Math.Min(Math.Max(p.Stock, line.Quantity), CartService.MaxQuantityPerLine); i++)
+                                            @for (var i = 1; i <= (p.IsService ? OrderService.MaxServiceQuantity : Math.Min(Math.Max(p.Stock, line.Quantity), CartService.MaxQuantityPerLine)); i++)
                                             {
                                                 <option value="@i" selected="@(i == line.Quantity)">@i</option>
                                             }

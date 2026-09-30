@@ -35,7 +35,13 @@ namespace e_Commerce_application.Controllers
             var userId = _users.GetUserId(User);
             var inCart = _cart.GetItems().GetValueOrDefault(productCode);
 
-            if (product.IsEbook)
+            if (userId != null && product.SellerId == userId)
+            {
+                this.Error("You can't buy your own listing.");
+                return this.RedirectToLocal(returnUrl, RedirectToAction(nameof(Index)));
+            }
+
+            if (product.IsDownloadable)
             {
                 if (userId != null && await _db.LibraryEntries.AnyAsync(l => l.UserId == userId && l.ProductCode == productCode))
                 {
@@ -46,6 +52,10 @@ namespace e_Commerce_application.Controllers
                 {
                     _cart.Add(productCode, 1);
                 }
+            }
+            else if (product.IsService)
+            {
+                _cart.Add(productCode, Math.Clamp(quantity, 1, Math.Max(1, OrderService.MaxServiceQuantity - inCart)));
             }
             else
             {
@@ -78,7 +88,13 @@ namespace e_Commerce_application.Controllers
             }
             else
             {
-                _cart.SetQuantity(productCode, product.IsEbook ? 1 : Math.Min(quantity, Math.Max(product.Stock, 1)));
+                var max = product.Type switch
+                {
+                    ProductType.Physical => Math.Max(product.Stock, 1),
+                    ProductType.Service => OrderService.MaxServiceQuantity,
+                    _ => 1
+                };
+                _cart.SetQuantity(productCode, Math.Min(quantity, max));
             }
             return RedirectToAction(nameof(Index));
         }

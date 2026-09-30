@@ -17,18 +17,32 @@ namespace e_Commerce_application.Controllers
         public async Task<IActionResult> Index()
         {
             var listed = _db.Products.AsNoTracking().Listed();
+            IQueryable<Product> OfType(ProductType type) => listed.Where(p => p.Type == type);
+
             var model = new HomeViewModel
             {
-                Featured = await listed.Where(p => p.Type == ProductType.Physical && p.Stock > 0)
-                    .OrderByDescending(p => p.Reviews.Count).ThenByDescending(p => p.PublishedAt)
-                    .ToSummaries().Take(8).ToListAsync(),
-                NewEbooks = await listed.Where(p => p.Type == ProductType.Ebook && p.Price > 0)
+                Deals = await listed.Deals().Where(p => p.Type != ProductType.Physical || p.Stock > 0)
+                    .OrderByDescending(p => (p.ListPrice! - p.Price) / p.ListPrice!).ToSummaries().Take(6).ToListAsync(),
+                Featured = await OfType(ProductType.Physical).Where(p => p.Stock > 0)
+                    .OrderByDescending(p => p.Reviews.Count).ThenByDescending(p => p.PublishedAt).ToSummaries().Take(6).ToListAsync(),
+                Services = await OfType(ProductType.Service)
+                    .OrderByDescending(p => p.Reviews.Count).ThenByDescending(p => p.PublishedAt).ToSummaries().Take(6).ToListAsync(),
+                Digital = await OfType(ProductType.Digital).Where(p => p.Price > 0)
                     .OrderByDescending(p => p.PublishedAt).ToSummaries().Take(6).ToListAsync(),
-                FreeEbooks = await listed.Where(p => p.Type == ProductType.Ebook && p.Price == 0)
+                NewEbooks = await OfType(ProductType.Ebook).Where(p => p.Price > 0)
                     .OrderByDescending(p => p.PublishedAt).ToSummaries().Take(6).ToListAsync(),
-                ProductCategories = await listed.Where(p => p.Type == ProductType.Physical).Select(p => p.Category).Distinct().OrderBy(c => c).ToListAsync(),
-                EbookCategories = await listed.Where(p => p.Type == ProductType.Ebook).Select(p => p.Category).Distinct().OrderBy(c => c).ToListAsync()
+                FreeDownloads = await listed.Where(p => (p.Type == ProductType.Ebook || p.Type == ProductType.Digital) && p.Price == 0)
+                    .OrderByDescending(p => p.PublishedAt).ToSummaries().Take(6).ToListAsync(),
+                Counts = await listed.GroupBy(p => p.Type).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count)
             };
+
+            var recent = RecentlyViewed.Get(HttpContext.Session);
+            if (recent.Count > 0)
+            {
+                var viewed = await listed.Where(p => recent.Contains(p.ProductCode)).ToSummaries().ToListAsync();
+                model.RecentlyViewed = viewed.OrderBy(s => recent.IndexOf(s.Product.ProductCode)).Take(6).ToList();
+            }
+
             return View(model);
         }
 

@@ -29,10 +29,44 @@
             </div>
         </div>
 
-        @if (cart.HasPhysical)
+        @{
+            var step = 1;
+        }
+        @if (cart.HasServices)
         {
+            step++;
             <div class="panel mb-3">
-                <h2 class="h5"><span class="step">2</span> Shipping address</h2>
+                <h2 class="h5"><span class="step">@step</span> Schedule your services</h2>
+                @for (var i = 0; i < Model.Bookings.Count; i++)
+                {
+                    var booking = Model.Bookings[i];
+                    var service = cart.Lines.First(l => l.Product.ProductCode == booking.ProductCode).Product;
+                    <div class="booking border-top pt-3 mt-2" data-testid="booking">
+                        <div class="fw-semibold">@service.Name</div>
+                        <div class="small text-secondary mb-2">@ViewHelpers.Duration(service.DurationMinutes) · @Catalog.LocationLabel(service.ServiceLocation)</div>
+                        <input type="hidden" name="Bookings[@i].ProductCode" value="@booking.ProductCode" />
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label small" for="booking-date-@i">Preferred date</label>
+                                <input type="date" id="booking-date-@i" name="Bookings[@i].Date" value="@booking.Date?.ToString("yyyy-MM-dd")"
+                                       min="@OrderService.EarliestServiceDate.ToString("yyyy-MM-dd")" class="form-control" required />
+                                <span class="text-danger small" asp-validation-for="Bookings[i].Date"></span>
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label small" for="booking-notes-@i">Notes for the provider <span class="text-secondary">(optional)</span></label>
+                                <input id="booking-notes-@i" name="Bookings[@i].Notes" value="@booking.Notes" maxlength="1000" class="form-control" placeholder="Preferred time, access details, what you need help with..." />
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (cart.NeedsAddress)
+        {
+            step++;
+            <div class="panel mb-3">
+                <h2 class="h5"><span class="step">@step</span> @(cart.HasPhysical ? "Shipping address" : "Service address")</h2>
                 <div class="row g-3">
                     <div class="col-12">
                         <label asp-for="AddressLine" class="form-label"></label>
@@ -62,16 +96,16 @@
         }
 
         <div class="panel mb-3">
-            <h2 class="h5"><span class="step">@(cart.HasPhysical ? 3 : 2)</span> Payment method</h2>
+            <h2 class="h5"><span class="step">@(++step)</span> Payment method</h2>
             <div class="form-check">
                 <input class="form-check-input" type="radio" asp-for="PaymentMethod" value="@CheckoutViewModel.PayByCard" id="pay-card" />
                 <label class="form-check-label" for="pay-card"><i class="bi bi-credit-card"></i> Credit or debit card <span class="badge text-bg-light border">Demo: no charge</span></label>
             </div>
-            @if (cart.HasPhysical)
+            @if (cart.NeedsAddress)
             {
                 <div class="form-check">
                     <input class="form-check-input" type="radio" asp-for="PaymentMethod" value="@CheckoutViewModel.PayOnDelivery" id="pay-delivery" />
-                    <label class="form-check-label" for="pay-delivery"><i class="bi bi-cash-coin"></i> Pay on delivery</label>
+                    <label class="form-check-label" for="pay-delivery"><i class="bi bi-cash-coin"></i> Pay on delivery / on arrival</label>
                 </div>
             }
             <span asp-validation-for="PaymentMethod" class="text-danger small"></span>
@@ -79,14 +113,14 @@
         </div>
 
         <div class="panel">
-            <h2 class="h5"><span class="step">@(cart.HasPhysical ? 4 : 3)</span> Review items</h2>
+            <h2 class="h5"><span class="step">@(++step)</span> Review items</h2>
             @foreach (var line in cart.Lines)
             {
                 <div class="cart-line compact">
                     <div class="cart-thumb"><partial name="_ProductImage" model="line.Product" /></div>
                     <div class="flex-grow-1">
                         <div class="fw-semibold">@line.Product.Name</div>
-                        <div class="small text-secondary">@(line.Product.IsEbook ? "eBook: delivered to your library" : $"Qty: {line.Quantity}")</div>
+                        <div class="small text-secondary">@(line.Product.IsDownloadable ? "Instant download to your library" : line.Product.IsService ? $"Sessions: {line.Quantity}" : $"Qty: {line.Quantity}")</div>
                     </div>
                     <div class="fw-bold">@ViewHelpers.Price(line.LineTotal)</div>
                 </div>

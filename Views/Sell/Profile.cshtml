@@ -1,0 +1,52 @@
+@model SellerProfileViewModel
+@{
+    var isSeller = User.IsInRole(Roles.Seller);
+    ViewData["Title"] = isSeller ? "Seller profile" : "Start selling";
+}
+<div class="row justify-content-center mt-3">
+    <div class="col-lg-9">
+        @if (!isSeller)
+        {
+            <div class="publish-header mb-3">
+                <div>
+                    <div class="small text-uppercase fw-semibold opacity-75">ShopNest Seller Central</div>
+                    <h1 class="h3">Sell anything to customers everywhere</h1>
+                    <p class="mb-0">List physical products, offer services, sell digital downloads or self-publish ebooks. It's free to list; you keep 85% of each sale (70% royalties on ebooks).</p>
+                </div>
+            </div>
+            <div class="row g-3 mb-3 text-center small">
+                <div class="col-6 col-md-3"><div class="panel h-100"><i class="bi bi-box-seam fs-2 text-warning"></i><div class="fw-semibold">Products</div>Set stock and ship orders</div></div>
+                <div class="col-6 col-md-3"><div class="panel h-100"><i class="bi bi-calendar-check fs-2 text-warning"></i><div class="fw-semibold">Services</div>Customers book a date</div></div>
+                <div class="col-6 col-md-3"><div class="panel h-100"><i class="bi bi-cloud-download fs-2 text-warning"></i><div class="fw-semibold">Digital</div>Courses, music, templates</div></div>
+                <div class="col-6 col-md-3"><div class="panel h-100"><i class="bi bi-book fs-2 text-warning"></i><div class="fw-semibold">eBooks</div>Self-publish in minutes</div></div>
+            </div>
+        }
+        <div class="panel">
+            <h2 class="h5">@(isSeller ? "Seller profile" : "Set up your seller profile")</h2>
+            <form asp-action="Profile" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                <div class="mb-3">
+                    <label asp-for="SellerName" class="form-label"></label>
+                    <input asp-for="SellerName" class="form-control" />
+                    <div class="form-text">Shown on your listings and your public shop page.</div>
+                    <span asp-validation-for="SellerName" class="text-danger small"></span>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="SellerBio" class="form-label"></label>
+                    <textarea asp-for="SellerBio" class="form-control" rows="4"></textarea>
+                    <span asp-validation-for="SellerBio" class="text-danger small"></span>
+                </div>
+                <div class="form-check mb-3">
+                    <input asp-for="AcceptTerms" class="form-check-input" />
+                    <label asp-for="AcceptTerms" class="form-check-label"></label>
+                    <a asp-controller="Home" asp-action="Privacy" class="small ms-1">Seller terms</a>
+                    <div><span asp-validation-for="AcceptTerms" class="text-danger small"></span></div>
+                </div>
+                <button class="btn btn-buy" type="submit">@(isSeller ? "Save profile" : "Start selling")</button>
+            </form>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

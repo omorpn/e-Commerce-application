@@ -29,8 +29,11 @@
                         <option value="all">All</option>
                         <option value="products" selected="@(searchDept == "products")">Products</option>
                         <option value="ebooks" selected="@(searchDept == "ebooks")">eBooks</option>
+                        <option value="digital" selected="@(searchDept == "digital")">Digital</option>
+                        <option value="services" selected="@(searchDept == "services")">Services</option>
+                        <option value="deals" selected="@(searchDept == "deals")">Deals</option>
                     </select>
-                    <input type="search" name="q" value="@searchText" class="form-control" placeholder="Search products, ebooks and authors" aria-label="Search" />
+                    <input type="search" name="q" value="@searchText" class="form-control" placeholder="Search products, services, downloads and ebooks" aria-label="Search" />
                     <button class="btn btn-search" type="submit" aria-label="Search"><i class="bi bi-search"></i></button>
                 </form>
 
@@ -46,13 +49,14 @@
         <nav class="subnav" aria-label="Departments">
             <div class="subnav-inner">
                 <a asp-controller="Products" asp-action="Index"><i class="bi bi-list"></i> All</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="deals">Today's Deals</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products">Products</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="services">Services</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="digital">Digital Downloads</a>
                 <a asp-controller="Products" asp-action="Index" asp-route-dept="ebooks">eBook Store</a>
-                <a asp-controller="Products" asp-action="Index" asp-route-dept="ebooks" asp-route-maxPrice="0">Free eBooks</a>
-                @foreach (var category in Catalog.ProductCategories.Take(4))
-                {
-                    <a asp-controller="Products" asp-action="Index" asp-route-dept="products" asp-route-category="@category">@category</a>
-                }
-                <a class="ms-md-auto highlight" asp-controller="Publish" asp-action="Index"><i class="bi bi-pencil-square"></i> Publish your book</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products" asp-route-category="Electronics">Electronics</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products" asp-route-category="Fashion">Fashion</a>
+                <a class="ms-md-auto highlight" asp-controller="Sell" asp-action="Index"><i class="bi bi-shop"></i> Sell on ShopNest</a>
             </div>
         </nav>
     </header>
@@ -82,20 +86,25 @@
         <div class="footer-grid container-xl">
             <div>
                 <h6>Shop</h6>
-                <a asp-controller="Products" asp-action="Index" asp-route-dept="products">All products</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="deals">Today's Deals</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="products">Products</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="services">Services</a>
+                <a asp-controller="Products" asp-action="Index" asp-route-dept="digital">Digital downloads</a>
                 <a asp-controller="Products" asp-action="Index" asp-route-dept="ebooks">eBook Store</a>
-                <a asp-controller="Products" asp-action="Index" asp-route-sort="newest">New arrivals</a>
             </div>
             <div>
                 <h6>Make money with us</h6>
-                <a asp-controller="Publish" asp-action="Index">Self-publish an ebook</a>
-                <a asp-controller="Publish" asp-action="Profile">Author profile</a>
+                <a asp-controller="Sell" asp-action="Index">Sell products &amp; services</a>
+                <a asp-controller="Sell" asp-action="Create" asp-route-type="Ebook">Self-publish an ebook</a>
+                <a asp-controller="Sell" asp-action="Create" asp-route-type="Digital">Sell digital downloads</a>
+                <a asp-controller="Sell" asp-action="Orders">Seller orders</a>
             </div>
             <div>
                 <h6>Your account</h6>
                 <a asp-area="Identity" asp-page="/Account/Manage/Index">Account settings</a>
                 <a asp-controller="Orders" asp-action="Index">Your orders</a>
                 <a asp-controller="Library" asp-action="Index">Your library</a>
+                <a asp-controller="Wishlist" asp-action="Index">Your wish list</a>
             </div>
             <div>
                 <h6>Help</h6>

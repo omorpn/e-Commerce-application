@@ -12,5 +12,5 @@ else if (Model.IsEbook)
 }
 else
 {
-    <div class="product-placeholder" aria-hidden="true"><i class="bi @ViewHelpers.CategoryIcon(Model.Category)"></i></div>
+    <div class="product-placeholder type-@Model.Type.ToString().ToLowerInvariant()" aria-hidden="true"><i class="bi @ViewHelpers.CategoryIcon(Model.Category)"></i></div>
 }

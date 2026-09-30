@@ -9,54 +9,63 @@ using Microsoft.EntityFrameworkCore;
 
 namespace e_Commerce_application.Areas.Admin.Controllers
 {
-    // Store-owned physical products.
+    // Listings owned and fulfilled by the store itself (any type).
     [Area("Admin")]
     [Authorize(Roles = Roles.Admin)]
     public class ProductsController : Controller
     {
         private readonly AppDbContext _db;
-        private readonly IFileStorage _storage;
+        private readonly ListingService _listings;
 
-        public ProductsController(AppDbContext db, IFileStorage storage)
+        public ProductsController(AppDbContext db, ListingService listings)
         {
             _db = db;
-            _storage = storage;
+            _listings = listings;
         }
 
-        public async Task<IActionResult> Index(string? q, string? category)
+        public async Task<IActionResult> Index(string? q, ProductType? type)
         {
-            var query = _db.Products.AsNoTracking().Where(p => p.Type == ProductType.Physical).Search(q);
-            if (!string.IsNullOrWhiteSpace(category))
+            var query = _db.Products.AsNoTracking().Where(p => p.SellerId == null).Search(q);
+            if (type.HasValue)
             {
-                query = query.Where(p => p.Category == category);
+                query = query.Where(p => p.Type == type.Value);
             }
             ViewData["q"] = q;
-            ViewData["category"] = category;
-            return View(await query.OrderBy(p => p.Name).ToListAsync());
+            ViewData["type"] = type;
+            return View(await query.OrderBy(p => p.Type).ThenBy(p => p.Name).ToListAsync());
         }
 
-        public IActionResult Create() => View("Edit", new ProductFormViewModel());
+        public IActionResult Create(ProductType type = ProductType.Physical) =>
+            View("~/Views/Sell/Edit.cshtml", new ListingFormViewModel
+            {
+                Type = type,
+                Language = "English",
+                Stock = type == ProductType.Physical ? 1 : 0,
+                DurationMinutes = type == ProductType.Service ? 60 : null
+            });
 
         [HttpPost]
-        [RequestSizeLimit(FileSignatures.MaxImageBytes + 1024 * 1024)]
-        public async Task<IActionResult> Create(ProductFormViewModel model)
+        [RequestSizeLimit(FileSignatures.MaxUploadRequestBytes)]
+        [RequestFormLimits(MultipartBodyLengthLimit = FileSignatures.MaxUploadRequestBytes)]
+        public async Task<IActionResult> Create(ListingFormViewModel model, bool publishNow = false)
         {
-            ValidateCategory(model);
-            var imageKind = await Uploads.CheckImageAsync(model.Image, nameof(model.Image), ModelState);
+            if (!Enum.IsDefined(model.Type))
+            {
+                return BadRequest();
+            }
+
+            var (fileKind, imageKind) = await _listings.ValidateAsync(model, ModelState, isNew: true);
             if (!ModelState.IsValid)
             {
-                return View("Edit", model);
+                return View("~/Views/Sell/Edit.cshtml", model);
             }
 
-            var product = new Product { Type = ProductType.Physical, CreatedAt = DateTime.UtcNow };
-            Apply(model, product);
-            if (imageKind != null)
+            var product = new Product { Status = publishNow ? ListingStatus.Published : ListingStatus.Draft };
+            await _listings.ApplyAsync(model, product, fileKind, imageKind);
+            if (publishNow)
             {
-                var image = await _storage.SaveAsync(model.Image!, imageKind, "products");
-                product.ImagePath = image.Key;
-                product.ImageContentType = image.Kind.ContentType;
+                product.PublishedAt = DateTime.UtcNow;
             }
-
             _db.Products.Add(product);
             await _db.SaveChangesAsync();
             this.Success($"Created \"{product.Name}\".");
@@ -66,27 +75,13 @@ namespace e_Commerce_application.Areas.Admin.Controllers
         public async Task<IActionResult> Edit(int id)
         {
             var product = await FindAsync(id);
-            if (product == null)
-            {
-                return NotFound();
-            }
-
-            return View(new ProductFormViewModel
-            {
-                ProductCode = product.ProductCode,
-                Name = product.Name,
-                Description = product.Description,
-                Category = product.Category,
-                Price = product.Price,
-                Stock = product.Stock,
-                Published = product.Status == ListingStatus.Published,
-                HasImage = product.ImagePath != null
-            });
+            return product == null ? NotFound() : View("~/Views/Sell/Edit.cshtml", ListingService.ToForm(product));
         }
 
         [HttpPost]
-        [RequestSizeLimit(FileSignatures.MaxImageBytes + 1024 * 1024)]
-        public async Task<IActionResult> Edit(int id, ProductFormViewModel model)
+        [RequestSizeLimit(FileSignatures.MaxUploadRequestBytes)]
+        [RequestFormLimits(MultipartBodyLengthLimit = FileSignatures.MaxUploadRequestBytes)]
+        public async Task<IActionResult> Edit(int id, ListingFormViewModel model, bool publishNow = false)
         {
             var product = await FindAsync(id);
             if (product == null)
@@ -94,35 +89,42 @@ namespace e_Commerce_application.Areas.Admin.Controllers
                 return NotFound();
             }
 
-            ValidateCategory(model);
-            var imageKind = await Uploads.CheckImageAsync(model.Image, nameof(model.Image), ModelState);
+            model.Type = product.Type;
+            var (fileKind, imageKind) = await _listings.ValidateAsync(model, ModelState, isNew: false);
             if (!ModelState.IsValid)
             {
-                model.ProductCode = id;
-                model.HasImage = product.ImagePath != null;
-                return View(model);
+                ListingService.Refill(model, product);
+                return View("~/Views/Sell/Edit.cshtml", model);
             }
 
-            var oldImage = product.ImagePath;
-            Apply(model, product);
-            if (imageKind != null)
+            var replaced = await _listings.ApplyAsync(model, product, fileKind, imageKind);
+            if (publishNow && product.Status == ListingStatus.Draft)
             {
-                var image = await _storage.SaveAsync(model.Image!, imageKind, "products");
-                product.ImagePath = image.Key;
-                product.ImageContentType = image.Kind.ContentType;
+                product.Status = ListingStatus.Published;
+                product.PublishedAt ??= DateTime.UtcNow;
             }
-            else if (model.RemoveImage)
-            {
-                product.ImagePath = null;
-                product.ImageContentType = null;
-            }
-
             await _db.SaveChangesAsync();
-            if (oldImage != product.ImagePath)
-            {
-                _storage.Delete(oldImage);
-            }
+            _listings.DeleteFiles(replaced);
             this.Success($"Saved \"{product.Name}\".");
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SetStatus(int id, bool publish)
+        {
+            var product = await FindAsync(id);
+            if (product == null)
+            {
+                return NotFound();
+            }
+            product.Status = publish ? ListingStatus.Published : ListingStatus.Draft;
+            if (publish)
+            {
+                product.PublishedAt ??= DateTime.UtcNow;
+            }
+            product.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+            this.Success(publish ? $"\"{product.Name}\" is visible in the store." : $"\"{product.Name}\" is hidden from the store.");
             return RedirectToAction(nameof(Index));
         }
 
@@ -134,38 +136,20 @@ namespace e_Commerce_application.Areas.Admin.Controllers
             {
                 return NotFound();
             }
+            if (await _db.LibraryEntries.AnyAsync(l => l.ProductCode == id))
+            {
+                this.Error("Customers already own this item, so it can't be deleted. Hide it instead.");
+                return RedirectToAction(nameof(Index));
+            }
 
             _db.Products.Remove(product);
             await _db.SaveChangesAsync();
-            _storage.Delete(product.ImagePath);
+            _listings.DeleteFiles(new[] { product.FilePath, product.ImagePath });
             this.Success($"Deleted \"{product.Name}\". Past orders keep their line items.");
             return RedirectToAction(nameof(Index));
         }
 
         private Task<Product?> FindAsync(int id) =>
-            _db.Products.FirstOrDefaultAsync(p => p.ProductCode == id && p.Type == ProductType.Physical);
-
-        private void ValidateCategory(ProductFormViewModel model)
-        {
-            if (!Catalog.ProductCategories.Contains(model.Category))
-            {
-                ModelState.AddModelError(nameof(model.Category), "Please choose a category.");
-            }
-        }
-
-        private static void Apply(ProductFormViewModel model, Product product)
-        {
-            product.Name = model.Name.Trim();
-            product.Description = model.Description?.Trim();
-            product.Category = model.Category;
-            product.Price = Math.Round(model.Price, 2);
-            product.Stock = model.Stock;
-            product.Status = model.Published ? ListingStatus.Published : ListingStatus.Draft;
-            if (model.Published)
-            {
-                product.PublishedAt ??= DateTime.UtcNow;
-            }
-            product.UpdatedAt = DateTime.UtcNow;
-        }
+            _db.Products.FirstOrDefaultAsync(p => p.ProductCode == id && p.SellerId == null);
     }
 }

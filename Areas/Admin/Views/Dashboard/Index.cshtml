@@ -6,9 +6,21 @@
 <div class="stat-grid mt-3">
     <div class="stat"><div class="stat-label">Revenue</div><div class="stat-value">@ViewHelpers.Currency(Model.Revenue)</div></div>
     <div class="stat"><div class="stat-label">Orders</div><div class="stat-value">@Model.OrderCount</div><div class="small text-warning-emphasis">@Model.PendingOrders awaiting fulfilment</div></div>
-    <div class="stat"><div class="stat-label">Products</div><div class="stat-value">@Model.ProductCount</div><div class="small text-danger">@Model.LowStockCount low on stock</div></div>
-    <div class="stat"><div class="stat-label">eBooks</div><div class="stat-value">@Model.EbookCount</div></div>
-    <div class="stat"><div class="stat-label">Customers</div><div class="stat-value">@Model.UserCount</div><div class="small text-secondary">@Model.AuthorCount authors</div></div>
+    <div class="stat"><div class="stat-label">Users</div><div class="stat-value">@Model.UserCount</div><div class="small text-secondary">@Model.SellerCount sellers</div></div>
+    <div class="stat"><div class="stat-label">Seller listings</div><div class="stat-value">@Model.SellerListings</div><a class="small" asp-controller="Listings" asp-action="Index">Moderate</a></div>
+</div>
+<div class="stat-grid mt-3">
+    @foreach (var type in Enum.GetValues<ProductType>())
+    {
+        <div class="stat">
+            <div class="stat-label"><i class="bi @ViewHelpers.TypeIcon(type)"></i> @Catalog.DepartmentName(type)</div>
+            <div class="stat-value">@Model.ListingCounts.GetValueOrDefault(type)</div>
+            @if (type == ProductType.Physical)
+            {
+                <div class="small text-danger">@Model.LowStockCount low on stock</div>
+            }
+        </div>
+    }
 </div>
 
 <div class="row g-3 mt-1">

@@ -34,7 +34,7 @@ namespace e_Commerce_application.Controllers
             {
                 OrderDate = order.OrderDate,
                 ExpectedTotal = order.InvoicePrice,
-                AllowDigital = false,
+                AllowAccountItems = false,
                 CustomerName = order.CustomerName,
                 Email = order.Email,
                 Phone = order.Phone,

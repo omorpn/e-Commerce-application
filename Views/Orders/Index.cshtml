@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "Your Orders";
 }
-<h1 class="h3 mt-3">Your Orders</h1>
+<h1 class="h3 mt-3">Your Orders &amp; Bookings</h1>
 @if (Model.Count == 0)
 {
     <div class="panel text-center py-5">
@@ -33,13 +33,17 @@
                 <div class="d-flex justify-content-between small py-1">
                     <span>
                         <a asp-controller="Products" asp-action="Details" asp-route-id="@item.ProductCode">@item.ProductName</a>
-                        @if (item.ProductType == ProductType.Ebook)
+                        @if (item.ProductType != ProductType.Physical)
                         {
-                            <span class="badge text-bg-dark ms-1">eBook</span>
+                            <span class="badge text-bg-dark ms-1">@Catalog.Label(item.ProductType)</span>
                         }
-                        else
+                        @if (item.ProductType is ProductType.Physical or ProductType.Service)
                         {
                             <span class="text-secondary">× @item.Quantity</span>
+                        }
+                        @if (item.ServiceDate.HasValue)
+                        {
+                            <span class="text-secondary">· @item.ServiceDate.Value.ToString("ddd, MMM d")</span>
                         }
                     </span>
                     <span>@ViewHelpers.Price(item.LineTotal)</span>

@@ -14,13 +14,62 @@ namespace e_Commerce_application.Services
         public static string CategoryIcon(string? category) => category switch
         {
             "Electronics" => "bi-headphones",
+            "Computers" => "bi-laptop",
+            "Phones & Tablets" => "bi-phone",
             "Home & Kitchen" => "bi-cup-hot",
+            "Furniture" => "bi-lamp",
             "Fashion" => "bi-bag",
-            "Sports & Outdoors" => "bi-bicycle",
+            "Jewelry" => "bi-gem",
             "Beauty" => "bi-droplet",
+            "Health" => "bi-heart-pulse",
+            "Grocery" => "bi-basket",
+            "Baby" => "bi-balloon-heart",
             "Toys & Games" => "bi-controller",
+            "Sports & Outdoors" => "bi-bicycle",
+            "Garden" => "bi-flower1",
+            "Pet Supplies" => "bi-heart",
+            "Automotive" => "bi-car-front",
+            "Books" => "bi-book",
             "Office" => "bi-briefcase",
+            "Software" => "bi-window-stack",
+            "Music" => "bi-music-note-beamed",
+            "Audiobooks" => "bi-headset",
+            "Online Courses" => "bi-mortarboard",
+            "Templates" => "bi-file-earmark-spreadsheet",
+            "Graphics & Art" => "bi-palette",
+            "Photography" => "bi-camera",
+            "Video" => "bi-camera-reels",
+            "Games" => "bi-joystick",
+            "Fonts" => "bi-fonts",
+            "Home Services" => "bi-house-check",
+            "Repairs" => "bi-tools",
+            "Tutoring & Lessons" => "bi-easel",
+            "Design & Creative" => "bi-vector-pen",
+            "Writing & Translation" => "bi-pencil",
+            "Programming & Tech" => "bi-code-slash",
+            "Marketing" => "bi-megaphone",
+            "Business Consulting" => "bi-graph-up-arrow",
+            "Beauty & Wellness" => "bi-flower2",
+            "Fitness & Coaching" => "bi-activity",
+            "Events & Photography" => "bi-camera2",
             _ => "bi-box-seam"
+        };
+
+        public static string TypeIcon(ProductType type) => type switch
+        {
+            ProductType.Ebook => "bi-book",
+            ProductType.Digital => "bi-cloud-download",
+            ProductType.Service => "bi-calendar-check",
+            _ => "bi-box-seam"
+        };
+
+        public static string Duration(int? minutes) => minutes switch
+        {
+            null => "",
+            < 60 => $"{minutes} min",
+            < 1440 when minutes % 60 == 0 => $"{minutes / 60} hr",
+            < 1440 => $"{minutes / 60.0:0.#} hr",
+            _ => $"{minutes / 1440.0:0.#} days"
         };
 
         // Deterministic colour pair so each generated book cover looks distinct but stable.

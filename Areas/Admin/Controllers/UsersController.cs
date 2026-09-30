@@ -25,10 +25,10 @@ namespace e_Commerce_application.Areas.Admin.Controllers
         public async Task<IActionResult> Index()
         {
             var admins = (await _users.GetUsersInRoleAsync(Roles.Admin)).Select(u => u.Id).ToHashSet();
-            var authors = (await _users.GetUsersInRoleAsync(Roles.Author)).Select(u => u.Id).ToHashSet();
+            var sellers = (await _users.GetUsersInRoleAsync(Roles.Seller)).Select(u => u.Id).ToHashSet();
             var orderCounts = await _db.Orders.Where(o => o.UserId != null).GroupBy(o => o.UserId!)
                 .Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count);
-            var titleCounts = await _db.Products.Where(p => p.SellerId != null).GroupBy(p => p.SellerId!)
+            var listingCounts = await _db.Products.Where(p => p.SellerId != null).GroupBy(p => p.SellerId!)
                 .Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count);
 
             var rows = (await _db.Users.AsNoTracking().OrderBy(u => u.Email).ToListAsync())
@@ -36,9 +36,9 @@ namespace e_Commerce_application.Areas.Admin.Controllers
                 {
                     User = u,
                     IsAdmin = admins.Contains(u.Id),
-                    IsAuthor = authors.Contains(u.Id),
+                    IsSeller = sellers.Contains(u.Id),
                     OrderCount = orderCounts.GetValueOrDefault(u.Id),
-                    TitleCount = titleCounts.GetValueOrDefault(u.Id)
+                    ListingCount = listingCounts.GetValueOrDefault(u.Id)
                 }).ToList();
             return View(rows);
         }

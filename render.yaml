@@ -1,0 +1,20 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploy with the "Deploy to Render" button in README.md.
+services:
+  - type: web
+    name: shopnest
+    runtime: docker
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      # Asked for during setup. The password needs 8+ characters with upper and
+      # lower case letters, a digit and a symbol, e.g. MyShop#2026
+      - key: Admin__Email
+        sync: false
+      - key: Admin__Password
+        sync: false
+    # Keeps the database, uploads and sign-in keys across deploys and restarts.
+    disk:
+      name: shopnest-data
+      mountPath: /data
+      sizeGB: 1

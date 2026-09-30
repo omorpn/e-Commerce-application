@@ -1,0 +1,79 @@
+@model List<SellerOrderRow>
+@{
+    ViewData["Title"] = "Seller orders";
+    var all = ViewData["All"] as bool? == true;
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center mt-3 gap-2">
+    <div>
+        <a asp-action="Index" class="small"><i class="bi bi-chevron-left"></i> Seller Central</a>
+        <h1 class="h3 mb-0">Orders to fulfil</h1>
+    </div>
+    <div class="btn-group btn-group-sm">
+        <a class="btn @(all ? "btn-light border" : "btn-dark")" asp-action="Orders">Open</a>
+        <a class="btn @(all ? "btn-dark" : "btn-light border")" asp-action="Orders" asp-route-all="true">All</a>
+    </div>
+</div>
+<p class="small text-secondary mt-2">Ship physical items and perform booked services, then mark each line as done. Digital downloads are delivered automatically.</p>
+
+@if (Model.Count == 0)
+{
+    <div class="panel text-center py-5">
+        <i class="bi bi-inbox display-5 text-secondary"></i>
+        <h2 class="h5 mt-3">@(all ? "No orders yet" : "You're all caught up")</h2>
+    </div>
+}
+@foreach (var row in Model)
+{
+    var item = row.Item;
+    var order = row.Order;
+    var isService = item.ProductType == ProductType.Service;
+    <div class="order-card mb-3" data-testid="seller-order">
+        <div class="order-card-head">
+            <div><div class="label">Order</div>#@order.OrderNo</div>
+            <div><div class="label">Placed</div>@order.OrderDate.ToString("MMM d, yyyy")</div>
+            @if (isService)
+            {
+                <div><div class="label">Booked for</div><strong>@item.ServiceDate?.ToString("ddd, MMM d, yyyy")</strong></div>
+            }
+            <div><div class="label">Earnings basis</div>@ViewHelpers.Currency(item.LineTotal)</div>
+            <div class="ms-auto">
+                @if (item.Fulfilled)
+                {
+                    <span class="badge text-bg-success">@(isService ? "Completed" : "Shipped") @item.FulfilledAt?.ToString("MMM d")</span>
+                }
+                else
+                {
+                    <form asp-action="Fulfil" asp-route-id="@item.Id" method="post">
+                        <button class="btn btn-buy btn-sm" type="submit">@(isService ? "Mark service completed" : "Mark as shipped")</button>
+                    </form>
+                }
+            </div>
+        </div>
+        <div class="order-card-body row g-3 small">
+            <div class="col-md-5">
+                <div class="fw-semibold fs-6">@item.ProductName</div>
+                <div class="text-secondary">@(isService ? $"{item.Quantity} session(s)" : $"Qty: {item.Quantity}")</div>
+                @if (!string.IsNullOrEmpty(item.ServiceNotes))
+                {
+                    <div class="mt-1"><strong>Customer notes:</strong> @item.ServiceNotes</div>
+                }
+            </div>
+            <div class="col-md-4">
+                <div class="fw-semibold">@order.CustomerName</div>
+                @if (order.AddressLine != null)
+                {
+                    <div>@order.AddressLine</div>
+                    <div>@order.City@(string.IsNullOrEmpty(order.State) ? "" : ", " + order.State) @order.PostalCode</div>
+                    <div>@order.Country</div>
+                }
+            </div>
+            <div class="col-md-3">
+                <div><i class="bi bi-envelope"></i> @order.Email</div>
+                @if (!string.IsNullOrEmpty(order.Phone))
+                {
+                    <div><i class="bi bi-telephone"></i> @order.Phone</div>
+                }
+            </div>
+        </div>
+    </div>
+}

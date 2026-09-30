@@ -37,7 +37,7 @@ namespace e_Commerce_application.Controllers
         [HttpPost]
         public async Task<IActionResult> Claim(int id)
         {
-            var result = await _orders.ClaimFreeEbookAsync(_users.GetUserId(User)!, id);
+            var result = await _orders.ClaimFreeAsync(_users.GetUserId(User)!, id);
             if (result.Succeeded)
             {
                 this.Success("Added to your library. Happy reading!");
@@ -47,10 +47,11 @@ namespace e_Commerce_application.Controllers
             return RedirectToAction("Details", "Products", new { id });
         }
 
-        // Owners, the publishing author and admins may download. "read" opens PDFs in the browser.
+        // Owners, the seller and admins may download. "read" opens PDFs in the browser.
         public async Task<IActionResult> Download(int id, bool read = false)
         {
-            var product = await _db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.ProductCode == id && p.Type == ProductType.Ebook);
+            var product = await _db.Products.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.ProductCode == id && (p.Type == ProductType.Ebook || p.Type == ProductType.Digital));
             if (product?.FilePath == null)
             {
                 return NotFound();
@@ -85,10 +86,10 @@ namespace e_Commerce_application.Controllers
 
         private static string SafeFileName(string name, string contentType)
         {
-            var extension = contentType == FileSignatures.Epub.ContentType ? ".epub" : ".pdf";
+            var extension = FileSignatures.FromContentType(contentType)?.Extension ?? ".bin";
             var baseName = Path.GetFileNameWithoutExtension(name);
             var cleaned = new string(baseName.Select(c => char.IsLetterOrDigit(c) || c is ' ' or '-' or '_' ? c : '_').ToArray()).Trim();
-            return (cleaned.Length == 0 ? "ebook" : cleaned) + extension;
+            return (cleaned.Length == 0 ? "download" : cleaned) + extension;
         }
     }
 }

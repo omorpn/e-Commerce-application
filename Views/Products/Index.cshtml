@@ -40,6 +40,7 @@
             <option value="price-desc" selected="@(q.Sort == "price-desc")">Price: High to Low</option>
             <option value="rating" selected="@(q.Sort == "rating")">Avg. customer review</option>
             <option value="newest" selected="@(q.Sort == "newest")">Newest arrivals</option>
+            <option value="discount" selected="@(q.Sort == "discount")">Biggest discount</option>
         </select>
         <noscript><button class="btn btn-sm btn-light border">Go</button></noscript>
     </form>
@@ -49,9 +50,10 @@
     <aside class="col-lg-3 col-xl-2">
         <div class="filters">
             <h2 class="filter-title">Department</h2>
-            <a class="filter-link @(q.Dept == "all" ? "active" : "")" asp-action="Index" asp-route-q="@q.Q">All departments</a>
-            <a class="filter-link @(q.Dept == "products" ? "active" : "")" asp-action="Index" asp-route-q="@q.Q" asp-route-dept="products">Products</a>
-            <a class="filter-link @(q.Dept == "ebooks" ? "active" : "")" asp-action="Index" asp-route-q="@q.Q" asp-route-dept="ebooks">eBooks</a>
+            @foreach (var (slug, label) in new[] { ("all", "All departments"), ("deals", "Today's Deals"), ("products", "Products"), ("services", "Services"), ("digital", "Digital downloads"), ("ebooks", "eBooks") })
+            {
+                <a class="filter-link @(q.Dept == slug ? "active" : "")" asp-action="Index" asp-route-q="@q.Q" asp-route-dept="@(slug == "all" ? null : slug)">@label</a>
+            }
 
             @if (Model.Categories.Count > 0)
             {

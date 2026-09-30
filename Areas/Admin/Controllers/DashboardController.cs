@@ -33,11 +33,11 @@ namespace e_Commerce_application.Areas.Admin.Controllers
                 OrderCount = await _db.Orders.CountAsync(),
                 PendingOrders = await _db.Orders.CountAsync(o => o.Status == OrderStatus.Pending || o.Status == OrderStatus.Processing),
                 Revenue = activeTotals.Sum(),
-                ProductCount = await physical.CountAsync(),
                 LowStockCount = await physical.CountAsync(p => p.Stock <= LowStockThreshold),
-                EbookCount = await _db.Products.CountAsync(p => p.Type == ProductType.Ebook),
+                ListingCounts = await _db.Products.GroupBy(p => p.Type).Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count),
+                SellerListings = await _db.Products.CountAsync(p => p.SellerId != null),
                 UserCount = await _db.Users.CountAsync(),
-                AuthorCount = (await _users.GetUsersInRoleAsync(Roles.Author)).Count,
+                SellerCount = (await _users.GetUsersInRoleAsync(Roles.Seller)).Count,
                 RecentOrders = await _db.Orders.AsNoTracking().Include(o => o.Products).OrderByDescending(o => o.OrderDate).Take(8).ToListAsync(),
                 LowStock = await physical.AsNoTracking().Where(p => p.Stock <= LowStockThreshold).OrderBy(p => p.Stock).Take(8).ToListAsync()
             };

@@ -1,105 +1,184 @@
 @model HomeViewModel
+@inject Microsoft.Extensions.Options.IOptions<ShopSettings> StoreSettings
+@inject Microsoft.Extensions.Options.IOptions<ShippingOptions> ShippingSettings
 @{
     ViewData["Title"] = null;
+    var store = StoreSettings.Value;
     int Count(ProductType t) => Model.Counts.GetValueOrDefault(t);
-    string Dept(string slug, string? sort = null, decimal? maxPrice = null) =>
-        Url.Action("Index", "Products", new { dept = slug, sort, maxPrice })!;
+    string Dept(string slug, string? sort = null, decimal? maxPrice = null, string? category = null) =>
+        Url.Action("Index", "Products", new { dept = slug, sort, maxPrice, category })!;
+    var sidebar = new[]
+    {
+        ("Phones & Tablets", "products"), ("Phone Accessories", "products"), ("Electronics", "products"), ("Computers", "products"),
+        ("Fashion", "products"), ("Watches", "products"), ("Fragrances", "products"), ("Beauty", "products"),
+        ("Home & Kitchen", "products"), ("Souvenirs", "products")
+    };
 }
-<section class="hero">
-    <div class="hero-copy">
-        <span class="hero-kicker">One marketplace for everything</span>
-        <h1>Buy products, book services, download anything.</h1>
-        <p>Shop everyday products, hire trusted professionals, and get ebooks, courses, music and templates the moment you pay. Got something to sell? Open your shop in minutes.</p>
-        <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-buy btn-lg" href="@Dept("deals")">See today's deals</a>
-            <a class="btn btn-outline-light btn-lg" asp-controller="Sell" asp-action="Index"><i class="bi bi-shop"></i> Start selling</a>
-        </div>
-    </div>
-    <div class="hero-art" aria-hidden="true">
-        <i class="bi bi-bag"></i><i class="bi bi-calendar-check"></i><i class="bi bi-cloud-download"></i>
-    </div>
-</section>
 
-<section class="dept-strip">
-    <a class="dept-card" href="@Dept("products")">
-        <span class="dept-card-icon"><i class="bi bi-box-seam"></i></span>
-        <span><strong>Products</strong><small>@Count(ProductType.Physical) items delivered to your door</small></span>
-    </a>
-    <a class="dept-card" href="@Dept("services")">
-        <span class="dept-card-icon"><i class="bi bi-calendar-check"></i></span>
-        <span><strong>Services</strong><small>@Count(ProductType.Service) pros: cleaning, repairs, lessons &amp; more</small></span>
-    </a>
-    <a class="dept-card" href="@Dept("digital")">
-        <span class="dept-card-icon"><i class="bi bi-cloud-download"></i></span>
-        <span><strong>Digital downloads</strong><small>@Count(ProductType.Digital) templates, music, courses, software</small></span>
-    </a>
-    <a class="dept-card" href="@Dept("ebooks")">
-        <span class="dept-card-icon"><i class="bi bi-book"></i></span>
-        <span><strong>eBook Store</strong><small>@Count(ProductType.Ebook) books from independent authors</small></span>
-    </a>
-</section>
-
-<section class="tile-grid">
-    <div class="tile">
-        <h2 class="h5">Shop by category</h2>
-        <div class="dept-grid">
-            @foreach (var category in new[] { "Electronics", "Home & Kitchen", "Fashion", "Computers" })
-            {
-                <a class="dept" asp-controller="Products" asp-action="Index" asp-route-dept="products" asp-route-category="@category">
-                    <span class="dept-icon"><i class="bi @ViewHelpers.CategoryIcon(category)"></i></span>
-                    <span>@category</span>
-                </a>
-            }
-        </div>
-        <a class="small" href="@Dept("products")">See all products</a>
-    </div>
-    <div class="tile">
-        <h2 class="h5">Book a professional</h2>
-        <div class="dept-grid">
-            @foreach (var category in new[] { "Home Services", "Repairs", "Tutoring & Lessons", "Design & Creative" })
-            {
-                <a class="dept" asp-controller="Products" asp-action="Index" asp-route-dept="services" asp-route-category="@category">
-                    <span class="dept-icon"><i class="bi @ViewHelpers.CategoryIcon(category)"></i></span>
-                    <span>@category</span>
-                </a>
-            }
-        </div>
-        <a class="small" href="@Dept("services")">See all services</a>
-    </div>
-    <div class="tile tile-publish">
-        <h2 class="h5">Sell anything on ShopNest</h2>
-        <ul class="small ps-3 mb-3">
-            <li>Physical products you ship</li>
-            <li>Services you perform, online or in person</li>
-            <li>Ebooks, courses, music, templates and software</li>
-        </ul>
-        <p class="small text-secondary">Keep 85% of every sale (70% royalties on ebooks).</p>
-        <a class="btn btn-cart btn-sm" asp-controller="Sell" asp-action="Index">Open your shop</a>
-    </div>
-    <div class="tile">
-        <h2 class="h5">Your account</h2>
-        @if (User.Identity?.IsAuthenticated == true)
+<section class="home-top">
+    <aside class="cat-sidebar d-none d-lg-block" aria-label="Categories">
+        @foreach (var (category, dept) in sidebar)
         {
-            <div class="list-group list-group-flush small">
-                <a class="list-group-item list-group-item-action" asp-controller="Orders" asp-action="Index"><i class="bi bi-box-seam me-2"></i>Track orders &amp; bookings</a>
-                <a class="list-group-item list-group-item-action" asp-controller="Library" asp-action="Index"><i class="bi bi-cloud-download me-2"></i>Your downloads &amp; ebooks</a>
-                <a class="list-group-item list-group-item-action" asp-controller="Wishlist" asp-action="Index"><i class="bi bi-heart me-2"></i>Your wish list</a>
-                <a class="list-group-item list-group-item-action" asp-controller="Cart" asp-action="Index"><i class="bi bi-cart3 me-2"></i>Your cart</a>
+            <a href="@Dept(dept, category: category)"><i class="bi @ViewHelpers.CategoryIcon(category)"></i> @category</a>
+        }
+        <a href="@Dept("services")"><i class="bi bi-calendar-check"></i> Services</a>
+        <a href="@Dept("digital")"><i class="bi bi-cloud-download"></i> Digital downloads</a>
+        <a href="@Dept("ebooks")"><i class="bi bi-book"></i> eBooks</a>
+    </aside>
+
+    <div id="heroCarousel" class="carousel slide hero-carousel" data-bs-ride="carousel" data-bs-interval="5500">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="3" aria-label="Slide 4"></button>
+        </div>
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <div class="hero-slide slide-sale">
+                    <div class="slide-copy">
+                        <span class="slide-kicker"><i class="bi bi-lightning-charge-fill"></i> Flash sale</span>
+                        <h1>Up to 30% off phones, gadgets &amp; fragrances</h1>
+                        <p>Genuine products, delivered fast across Nigeria. Limited stock!</p>
+                        <a class="btn btn-buy btn-lg" href="@Dept("deals", "discount")">Shop the sale</a>
+                    </div>
+                    <div class="slide-art" aria-hidden="true"><i class="bi bi-phone"></i><i class="bi bi-headphones"></i><i class="bi bi-stars"></i></div>
+                </div>
             </div>
+            <div class="carousel-item">
+                <div class="hero-slide slide-fashion">
+                    <div class="slide-copy">
+                        <span class="slide-kicker">New arrivals</span>
+                        <h2>Fashion that fits every occasion</h2>
+                        <p>Kaftans, Ankara, sneakers, watches and more from trusted sellers.</p>
+                        <a class="btn btn-light btn-lg" href="@Dept("products", category: "Fashion")">Shop fashion</a>
+                    </div>
+                    <div class="slide-art" aria-hidden="true"><i class="bi bi-bag"></i><i class="bi bi-smartwatch"></i><i class="bi bi-gem"></i></div>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <div class="hero-slide slide-services">
+                    <div class="slide-copy">
+                        <span class="slide-kicker">Book a professional</span>
+                        <h2>Cleaning, repairs, lessons &amp; more</h2>
+                        <p>Choose a date at checkout. Pay securely. Rate your pro when the job is done.</p>
+                        <a class="btn btn-light btn-lg" href="@Dept("services")">Browse services</a>
+                    </div>
+                    <div class="slide-art" aria-hidden="true"><i class="bi bi-house-check"></i><i class="bi bi-tools"></i><i class="bi bi-easel"></i></div>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <div class="hero-slide slide-sell">
+                    <div class="slide-copy">
+                        <span class="slide-kicker">Sell on @store.Name</span>
+                        <h2>Turn your products, skills and ideas into income</h2>
+                        <p>List for free. Sell products, services, ebooks and downloads to customers nationwide.</p>
+                        <a class="btn btn-buy btn-lg" asp-controller="Sell" asp-action="Index">Start selling</a>
+                    </div>
+                    <div class="slide-art" aria-hidden="true"><i class="bi bi-shop"></i><i class="bi bi-graph-up-arrow"></i><i class="bi bi-cash-stack"></i></div>
+                </div>
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev" aria-label="Previous">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next" aria-label="Next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        </button>
+    </div>
+
+    <div class="promo-stack d-none d-xl-flex">
+        @if (!string.IsNullOrEmpty(store.WhatsApp))
+        {
+            <a class="promo-card promo-whatsapp" href="https://wa.me/@store.WhatsApp" target="_blank" rel="noopener">
+                <i class="bi bi-whatsapp"></i>
+                <strong>Order on WhatsApp</strong>
+                <span>Chat with us to order or ask a question</span>
+            </a>
         }
         else
         {
-            <p class="small text-secondary">Sign in to track orders and bookings, keep your downloads, save a wish list and write reviews.</p>
-            <a class="btn btn-cart btn-sm w-100" asp-area="Identity" asp-page="/Account/Login">Sign in securely</a>
-            <div class="small mt-2">New here? <a asp-area="Identity" asp-page="/Account/Register">Create an account</a></div>
+            <a class="promo-card promo-whatsapp" asp-controller="Products" asp-action="Index" asp-route-dept="services">
+                <i class="bi bi-calendar-check"></i>
+                <strong>Book a service</strong>
+                <span>Trusted pros near you</span>
+            </a>
         }
+        <a class="promo-card promo-sell" asp-controller="Sell" asp-action="Index">
+            <i class="bi bi-shop"></i>
+            <strong>Sell with us</strong>
+            <span>Open your shop in minutes</span>
+        </a>
     </div>
 </section>
 
+<section class="trust-bar">
+    <div><i class="bi bi-patch-check"></i><span><strong>100% genuine</strong><small>Every item verified</small></span></div>
+    <div><i class="bi bi-truck"></i><span><strong>Fast delivery</strong><small>@(ShippingSettings.Value.FreeShippingOver > 0 ? $"Free over {ViewHelpers.Currency(ShippingSettings.Value.FreeShippingOver)}" : "Nationwide")</small></span></div>
+    <div><i class="bi bi-shield-lock"></i><span><strong>Secure payment</strong><small>Card, transfer, USSD</small></span></div>
+    <div><i class="bi bi-arrow-repeat"></i><span><strong>Easy returns</strong><small>Within 7 days</small></span></div>
+</section>
+
+<section class="circle-strip" aria-label="Popular categories">
+    @foreach (var (category, type, count) in Model.TopCategories)
+    {
+        <a class="circle" href="@Dept(Catalog.Slug(type), category: category)">
+            <span class="circle-icon" style="@ViewHelpers.PlaceholderStyle(category)"><i class="bi @ViewHelpers.CategoryIcon(category)"></i></span>
+            <span class="circle-label">@category</span>
+        </a>
+    }
+</section>
+
+@if (Model.FlashSale.Count > 0)
+{
+    <section class="flash-sale">
+        <div class="flash-head">
+            <h2><i class="bi bi-lightning-charge-fill"></i> Flash Sales</h2>
+            @if (Model.FlashSaleEnds.HasValue)
+            {
+                <div class="countdown" data-countdown="@Model.FlashSaleEnds.Value.ToString("o")">
+                    <span>Time left:</span> <b data-part="d">00</b>d : <b data-part="h">00</b>h : <b data-part="m">00</b>m : <b data-part="s">00</b>s
+                </div>
+            }
+            <a href="@Dept("deals", "discount")">See all <i class="bi bi-chevron-right"></i></a>
+        </div>
+        <div class="product-row">
+            @foreach (var item in Model.FlashSale)
+            {
+                <partial name="_ProductCard" model="item" />
+            }
+        </div>
+    </section>
+}
+
 <partial name="_Shelf" model="@(("Today's deals", "See all deals", Dept("deals", "discount"), Model.Deals))" />
 <partial name="_Shelf" model="@(("Popular products", "See more", Dept("products"), Model.Featured))" />
+
+<section class="split-banners">
+    <a class="split-banner banner-services" href="@Dept("services")">
+        <span><small>Services</small><strong>Hire trusted pros</strong><em>@Count(ProductType.Service) services available</em></span>
+        <i class="bi bi-tools"></i>
+    </a>
+    <a class="split-banner banner-digital" href="@Dept("digital")">
+        <span><small>Digital downloads</small><strong>Courses, templates &amp; more</strong><em>Instant delivery</em></span>
+        <i class="bi bi-cloud-download"></i>
+    </a>
+    <a class="split-banner banner-books" href="@Dept("ebooks")">
+        <span><small>eBook Store</small><strong>Read local authors</strong><em>@Count(ProductType.Ebook) books</em></span>
+        <i class="bi bi-book-half"></i>
+    </a>
+</section>
+
 <partial name="_Shelf" model="@(("Book a service", "See all services", Dept("services"), Model.Services))" />
 <partial name="_Shelf" model="@(("Digital downloads", "See more", Dept("digital"), Model.Digital))" />
 <partial name="_Shelf" model="@(("New in the eBook Store", "See more", Dept("ebooks", "newest"), Model.NewEbooks))" />
 <partial name="_Shelf" model="@(("Free to download", "See more", Url.Action("Index", "Products", new { maxPrice = 0 })!, Model.FreeDownloads))" />
 <partial name="_Shelf" model="@(("Your browsing history", "", "#", Model.RecentlyViewed))" />
+
+<section class="sell-cta">
+    <div>
+        <h2 class="h4 mb-1">Have something to sell?</h2>
+        <p class="mb-0">Products, services, ebooks or downloads: open your free shop on @store.Name and reach customers across Nigeria.</p>
+    </div>
+    <a class="btn btn-buy btn-lg" asp-controller="Sell" asp-action="Index">Start selling today</a>
+</section>

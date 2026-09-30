@@ -41,6 +41,13 @@ namespace e_Commerce_application.Models
         public string? ImagePath { get; set; }
         public string? ImageContentType { get; set; }
 
+        // Optional https link to an image hosted elsewhere, used when nothing was uploaded.
+        [StringLength(500)]
+        public string? ImageUrl { get; set; }
+
+        // End of a flash sale; the listing shows a countdown until then.
+        public DateTime? DealEndsAt { get; set; }
+
         // Ebook metadata
         [StringLength(120)]
         public string? AuthorName { get; set; }

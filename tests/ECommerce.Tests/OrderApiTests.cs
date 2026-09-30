@@ -37,9 +37,9 @@ namespace ECommerce.Tests
         [Fact]
         public async Task InvoiceMismatch_IsRejected()
         {
-            var mat = await _app.FindProductAsync("Non-slip Yoga Mat");
+            var speaker = await _app.FindProductAsync("Portable Bluetooth Speaker");
             var response = await _app.CreateClient().PostAsJsonAsync("/order/orders",
-                OrderBody(DateTime.UtcNow, 99m, new { productCode = mat.ProductCode, price = mat.Price, quantity = 1 }));
+                OrderBody(DateTime.UtcNow, 99m, new { productCode = speaker.ProductCode, price = speaker.Price, quantity = 1 }));
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             Assert.Contains("InvoicePrice doesn't match", await response.Content.ReadAsStringAsync());
@@ -48,9 +48,9 @@ namespace ECommerce.Tests
         [Fact]
         public async Task OldOrderDate_IsRejected()
         {
-            var mat = await _app.FindProductAsync("Non-slip Yoga Mat");
+            var speaker = await _app.FindProductAsync("Portable Bluetooth Speaker");
             var response = await _app.CreateClient().PostAsJsonAsync("/order/orders",
-                OrderBody(DateTime.UtcNow.AddHours(-1), mat.Price, new { productCode = mat.ProductCode, price = mat.Price, quantity = 1 }));
+                OrderBody(DateTime.UtcNow.AddHours(-1), speaker.Price, new { productCode = speaker.ProductCode, price = speaker.Price, quantity = 1 }));
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             Assert.Contains("can't be in the past", await response.Content.ReadAsStringAsync());
@@ -59,13 +59,13 @@ namespace ECommerce.Tests
         [Fact]
         public async Task WrongPrice_UnknownProduct_AndOutOfStock_AreRejected()
         {
-            var mat = await _app.FindProductAsync("Non-slip Yoga Mat");
+            var speaker = await _app.FindProductAsync("Portable Bluetooth Speaker");
             var hub = await _app.FindProductAsync("USB-C 7-in-1 Hub");
             var client = _app.CreateClient();
 
             var wrongPrice = await client.PostAsJsonAsync("/order/orders",
-                OrderBody(DateTime.UtcNow, 1m, new { productCode = mat.ProductCode, price = 1m, quantity = 1 }));
-            Assert.Contains($"Price for product {mat.ProductCode}", await wrongPrice.Content.ReadAsStringAsync());
+                OrderBody(DateTime.UtcNow, 1m, new { productCode = speaker.ProductCode, price = 1m, quantity = 1 }));
+            Assert.Contains($"Price for product {speaker.ProductCode}", await wrongPrice.Content.ReadAsStringAsync());
 
             var unknown = await client.PostAsJsonAsync("/order/orders",
                 OrderBody(DateTime.UtcNow, 5m, new { productCode = 99999, price = 5m, quantity = 1 }));

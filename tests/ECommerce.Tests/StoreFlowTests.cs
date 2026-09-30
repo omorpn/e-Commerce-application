@@ -63,8 +63,10 @@ namespace ECommerce.Tests
             {
                 ["FullName"] = "Test Customer",
                 ["Email"] = email,
+                ["Phone"] = "08031234567",
                 ["AddressLine"] = "1 Test Road",
-                ["City"] = "Lagos",
+                ["City"] = "Ikeja",
+                ["State"] = "Lagos",
                 ["Country"] = "Nigeria",
                 ["PaymentMethod"] = "Card (demo)"
             });
@@ -103,6 +105,7 @@ namespace ECommerce.Tests
             {
                 ["FullName"] = "Owner",
                 ["Email"] = "owner@test.local",
+                ["Phone"] = "08031234567",
                 ["PaymentMethod"] = "Card (demo)"
             });
             var orderUrl = checkout.Headers.Location!.ToString();
@@ -148,14 +151,16 @@ namespace ECommerce.Tests
             var denied = await customer.GetAsync("/Admin/Orders");
             Assert.Contains("AccessDenied", denied.Headers.Location!.ToString());
 
-            var mat = await _app.FindProductAsync("Non-slip Yoga Mat");
-            await customer.PostFormAsync($"/Products/Details/{mat.ProductCode}", "/Cart/Add", new() { ["productCode"] = mat.ProductCode.ToString() });
+            var speaker = await _app.FindProductAsync("Portable Bluetooth Speaker");
+            await customer.PostFormAsync($"/Products/Details/{speaker.ProductCode}", "/Cart/Add", new() { ["productCode"] = speaker.ProductCode.ToString() });
             var checkout = await customer.PostFormAsync("/Checkout", "/Checkout", new()
             {
                 ["FullName"] = "Customer",
                 ["Email"] = "c@test.local",
+                ["Phone"] = "08031234567",
                 ["AddressLine"] = "2 Road",
-                ["City"] = "Abuja",
+                ["City"] = "Garki",
+                ["State"] = "FCT - Abuja",
                 ["Country"] = "Nigeria",
                 ["PaymentMethod"] = "Pay on delivery"
             });

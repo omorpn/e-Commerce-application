@@ -10,6 +10,7 @@ namespace e_Commerce_application.Services
     public class CartService
     {
         private const string SessionKey = "cart";
+        private const string CouponKey = "coupon";
         public const int MaxQuantityPerLine = 99;
 
         private readonly IHttpContextAccessor _accessor;
@@ -44,7 +45,28 @@ namespace e_Commerce_application.Services
 
         public void Remove(int productCode) => Save(GetItems(), productCode, 0);
 
-        public void Clear() => Session.Remove(SessionKey);
+        public void Clear()
+        {
+            Session.Remove(SessionKey);
+            Session.Remove(CouponKey);
+        }
+
+        // Coupon code the shopper applied in the cart, used at checkout.
+        public string? CouponCode
+        {
+            get => Session.GetString(CouponKey);
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    Session.Remove(CouponKey);
+                }
+                else
+                {
+                    Session.SetString(CouponKey, value.Trim().ToUpperInvariant());
+                }
+            }
+        }
 
         public async Task<CartViewModel> BuildAsync(string? userId)
         {

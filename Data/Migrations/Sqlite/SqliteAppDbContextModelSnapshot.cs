@@ -241,6 +241,122 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("e_Commerce_application.Models.ChatMessage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("SenderId");
+
+                    b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("e_Commerce_application.Models.Conversation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BuyerId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("BuyerUnread")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ProductCode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SellerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("SellerUnread")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductCode");
+
+                    b.HasIndex("SellerId");
+
+                    b.HasIndex("BuyerId", "SellerId", "ProductCode");
+
+                    b.ToTable("Conversations");
+                });
+
+            modelBuilder.Entity("e_Commerce_application.Models.Coupon", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("AmountOff")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("MaxUses")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("MinSubtotal")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("PercentOff")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UsedCount")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.ToTable("Coupons");
+                });
+
             modelBuilder.Entity("e_Commerce_application.Models.FileBlob", b =>
                 {
                     b.Property<int>("Id")
@@ -295,6 +411,42 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                     b.ToTable("LibraryEntries");
                 });
 
+            modelBuilder.Entity("e_Commerce_application.Models.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("e_Commerce_application.Models.Order", b =>
                 {
                     b.Property<int>("OrderNo")
@@ -313,9 +465,16 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CouponCode")
+                        .HasMaxLength(40)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CustomerName")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<double>("Discount")
+                        .HasColumnType("REAL");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -327,9 +486,19 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PaymentMethod")
                         .HasMaxLength(40)
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(30)
@@ -339,12 +508,22 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<double>("ShippingFee")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("State")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<double>("Subtotal")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("TrackingNote")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("TEXT");
@@ -354,9 +533,39 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
 
                     b.HasKey("OrderNo");
 
+                    b.HasIndex("PaymentReference");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Orders");
+                });
+
+            modelBuilder.Entity("e_Commerce_application.Models.OrderEvent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OrderNo")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderNo");
+
+                    b.ToTable("OrderEvents");
                 });
 
             modelBuilder.Entity("e_Commerce_application.Models.OrderItem", b =>
@@ -434,6 +643,9 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("DealEndsAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Description")
                         .HasMaxLength(4000)
                         .HasColumnType("TEXT");
@@ -457,6 +669,10 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ImagePath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Language")
@@ -562,6 +778,21 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                     b.ToTable("Reviews");
                 });
 
+            modelBuilder.Entity("e_Commerce_application.Models.SiteSetting", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("SiteSettings");
+                });
+
             modelBuilder.Entity("e_Commerce_application.Models.WishlistItem", b =>
                 {
                     b.Property<int>("Id")
@@ -639,6 +870,48 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("e_Commerce_application.Models.ChatMessage", b =>
+                {
+                    b.HasOne("e_Commerce_application.Models.Conversation", null)
+                        .WithMany("Messages")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("e_Commerce_application.Models.ApplicationUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("e_Commerce_application.Models.Conversation", b =>
+                {
+                    b.HasOne("e_Commerce_application.Models.ApplicationUser", "Buyer")
+                        .WithMany()
+                        .HasForeignKey("BuyerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("e_Commerce_application.Models.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductCode")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("e_Commerce_application.Models.ApplicationUser", "Seller")
+                        .WithMany()
+                        .HasForeignKey("SellerId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Buyer");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Seller");
+                });
+
             modelBuilder.Entity("e_Commerce_application.Models.LibraryEntry", b =>
                 {
                     b.HasOne("e_Commerce_application.Models.Product", "Product")
@@ -658,6 +931,17 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("e_Commerce_application.Models.Notification", b =>
+                {
+                    b.HasOne("e_Commerce_application.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("e_Commerce_application.Models.Order", b =>
                 {
                     b.HasOne("e_Commerce_application.Models.ApplicationUser", "User")
@@ -666,6 +950,15 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("e_Commerce_application.Models.OrderEvent", b =>
+                {
+                    b.HasOne("e_Commerce_application.Models.Order", null)
+                        .WithMany("Events")
+                        .HasForeignKey("OrderNo")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("e_Commerce_application.Models.OrderItem", b =>
@@ -725,8 +1018,15 @@ namespace e_Commerce_application.Data.Migrations.Sqlite
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("e_Commerce_application.Models.Conversation", b =>
+                {
+                    b.Navigation("Messages");
+                });
+
             modelBuilder.Entity("e_Commerce_application.Models.Order", b =>
                 {
+                    b.Navigation("Events");
+
                     b.Navigation("Products");
                 });
 

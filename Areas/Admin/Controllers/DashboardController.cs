@@ -25,7 +25,8 @@ namespace e_Commerce_application.Areas.Admin.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var activeTotals = await _db.Orders.Where(o => o.Status != OrderStatus.Cancelled).Select(o => o.InvoicePrice).ToListAsync();
+            var activeTotals = await _db.Orders.Where(o => o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.AwaitingPayment)
+                .Select(o => o.InvoicePrice).ToListAsync();
             var physical = _db.Products.Where(p => p.Type == ProductType.Physical);
 
             var model = new AdminDashboardViewModel

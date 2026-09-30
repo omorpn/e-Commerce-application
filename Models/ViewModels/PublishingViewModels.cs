@@ -42,12 +42,18 @@ namespace e_Commerce_application.Models.ViewModels
         [Range(1, 20000), Display(Name = "Print length (pages)")]
         public int? PageCount { get; set; }
 
-        [Range(0, 1_000_000, ErrorMessage = "Price must be between {1} and {2}")]
-        [Display(Name = "Price (USD)")]
+        [Range(0, 100_000_000, ErrorMessage = "Price must be between {1} and {2}")]
+        [Display(Name = "Price")]
         public decimal Price { get; set; }
 
-        [Range(0, 1_000_000), Display(Name = "List price before discount (optional)")]
+        [Range(0, 100_000_000), Display(Name = "List price before discount (optional)")]
         public decimal? ListPrice { get; set; }
+
+        [DataType(DataType.DateTime), Display(Name = "Flash sale ends (optional)")]
+        public DateTime? DealEndsAt { get; set; }
+
+        [Url, StringLength(500), Display(Name = "Or paste an image link (https://...)")]
+        public string? ImageUrl { get; set; }
 
         [Range(0, 100_000), Display(Name = "Units in stock")]
         public int Stock { get; set; }

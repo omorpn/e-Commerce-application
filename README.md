@@ -1,6 +1,6 @@
 # ShopNest: marketplace for products, services and digital goods
 
-An ASP.NET Core 8 MVC marketplace. Customers buy physical products, book services, download digital goods and read ebooks. Anyone can open a shop and sell all four.
+An ASP.NET Core 8 MVC marketplace built for Nigeria: prices in Naira (₦), Paystack payments, delivery fees by state and pay on delivery. Customers buy physical products, book services, download digital goods and read ebooks. Anyone can open a shop and sell all four.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/omorpn/e-Commerce-application)
 
@@ -16,8 +16,11 @@ An ASP.NET Core 8 MVC marketplace. Customers buy physical products, book service
 ## Features
 
 **Shopping**
+- Homepage with banner slider, category sidebar and circles, trust bar, **Flash Sales** with a live countdown, and product rows that swipe on phones
 - Departments, search, category and price filters, sorting (price, rating, newest, biggest discount) and paging
 - **Today's Deals**: listings with a "was" price show the discount everywhere
+- **Checkout**: Paystack (card, bank transfer, USSD) or pay on delivery, delivery fee by Nigerian state with free delivery over a threshold, coupon codes
+- **Order tracking** timeline, **notifications** (in the header bell and by email), **chat** with sellers, WhatsApp chat button, and an app-style bottom menu on phones
 - Product pages with stock, service duration/location, file format and size, ratings and verified-purchase reviews
 - Wish list, browsing history, seller storefront pages
 - Cart and checkout with shipping/service address, service scheduling and demo payment (no real charge)
@@ -32,6 +35,8 @@ An ASP.NET Core 8 MVC marketplace. Customers buy physical products, book service
 - Public shop page listing everything you sell
 
 **Admin (`/Admin`)**
+- Coupons: percent or amount off, minimum order, expiry and usage limits
+- Order updates with a note for the customer (e.g. rider or tracking number); the customer is notified
 - Dashboard: revenue, orders awaiting fulfilment, listings by type, low stock, users and sellers
 - Store listings: create and manage the store's own products, services and downloads
 - Seller listings: moderate everything sellers publish (take down with a reason, reinstate)
@@ -56,6 +61,27 @@ Free plan limits:
 - Uploads are limited to 25 MB per file when stored in the database (`Storage__MaxFileMB` changes this, up to 100).
 
 The same Docker image runs on any container host (Railway, Fly.io, Azure App Service, a VPS). Point `ConnectionStrings__Default` at PostgreSQL, or leave the default to use SQLite under `/data` with a persistent volume mounted there. The app listens on `$PORT` when set, otherwise 8080.
+
+## Payments, email and store details
+
+Everything below is optional. Set these as environment variables on your host (Render: your service → **Environment**). Double underscores separate sections.
+
+| Variable | Example | What it does |
+|---|---|---|
+| `Payments__Paystack__SecretKey` | `sk_live_...` | Turns on real online payments. Get it from the [Paystack dashboard](https://dashboard.paystack.com/#/settings/developers). Until it's set, checkout offers a "Card (demo)" option that charges nothing. |
+| `Store__Name` | `ShopNest` | Store name shown everywhere |
+| `Store__WhatsApp` | `2348012345678` | Shows WhatsApp chat buttons (international format, no `+`) |
+| `Store__SupportPhone`, `Store__SupportEmail`, `Store__Address` | | Shown in the footer |
+| `Shipping__DefaultFee` | `4500` | Delivery fee for states without their own rate |
+| `Shipping__FreeShippingOver` | `150000` | Free delivery from this order total (0 turns it off) |
+| `Shipping__StateFees__Lagos` | `2500` | Delivery fee for one state (repeat for others) |
+| `Email__Host`, `Email__Port`, `Email__Username`, `Email__Password`, `Email__From` | `smtp.gmail.com`, `587`, ... | Sends order, message and password-reset emails through any SMTP service |
+
+**Paystack webhook:** in the Paystack dashboard set the webhook URL to `https://YOUR-SITE/Payments/Webhook`. Payments are also confirmed when the customer returns from Paystack, so the webhook is a safety net for customers who close the tab. Unpaid online orders are cancelled after 60 minutes (`Payments__UnpaidOrderMinutes`) and their stock is released.
+
+## Adding product photos
+
+The sample products use coloured category illustrations. For a professional store, add real photos: open a listing in **Admin → Store listings** (or **Seller Central** for your own listings), then either upload a JPG/PNG/WEBP or paste a link to an image under **Or paste an image link**.
 
 ## Running locally
 
@@ -131,6 +157,5 @@ TEST_POSTGRES="Host=localhost;Username=me;Password=secret" dotnet test
 
 ## Not included
 
-- **Real payments**: checkout records the order with a demo payment method. Connect a provider (Stripe, Paystack, Flutterwave) in `CheckoutController` using your merchant keys.
-- **Email**: no email sender is configured, so password-reset, confirmation and order emails aren't sent. Register an `IEmailSender` implementation to enable them.
-- **Seller payouts**: earnings are calculated and shown, but money isn't transferred to sellers.
+- **Seller payouts**: earnings are calculated and shown, but money isn't transferred to sellers automatically (pay them from your Paystack balance).
+- **Refunds**: cancelling a paid order records that a refund is due; issue the refund from the Paystack dashboard.

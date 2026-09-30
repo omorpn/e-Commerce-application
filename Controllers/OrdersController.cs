@@ -15,12 +15,17 @@ namespace e_Commerce_application.Controllers
         private readonly AppDbContext _db;
         private readonly OrderService _orders;
         private readonly UserManager<ApplicationUser> _users;
+        private readonly IPaymentGateway _gateway;
+        private readonly ShopSettings _store;
 
-        public OrdersController(AppDbContext db, OrderService orders, UserManager<ApplicationUser> users)
+        public OrdersController(AppDbContext db, OrderService orders, UserManager<ApplicationUser> users,
+            IPaymentGateway gateway, Microsoft.Extensions.Options.IOptions<ShopSettings> store)
         {
             _db = db;
             _orders = orders;
             _users = users;
+            _gateway = gateway;
+            _store = store.Value;
         }
 
         public async Task<IActionResult> Index()
@@ -39,7 +44,26 @@ namespace e_Commerce_application.Controllers
                 return NotFound();
             }
             ViewData["Placed"] = placed;
+            ViewData["CanPayOnline"] = _gateway.IsConfigured;
             return View(order);
+        }
+
+        // Retry an online payment for an order that is still waiting for one.
+        [HttpPost]
+        public async Task<IActionResult> Pay(int id)
+        {
+            if (!_gateway.IsConfigured)
+            {
+                this.Error("Online payments aren't available right now.");
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            var result = await _orders.NewPaymentAttemptAsync(id, _users.GetUserId(User)!);
+            if (!result.Succeeded)
+            {
+                this.Error(string.Join(" ", result.Errors));
+                return RedirectToAction(nameof(Details), new { id });
+            }
+            return await PaymentsController.StartPaymentAsync(this, _gateway, result.Value!, _store.CurrencyCode);
         }
 
         [HttpPost]
@@ -71,7 +95,7 @@ namespace e_Commerce_application.Controllers
         private async Task<Order?> FindOwnOrderAsync(int id)
         {
             var userId = _users.GetUserId(User);
-            return await _db.Orders.AsNoTracking().Include(o => o.Products)
+            return await _db.Orders.AsNoTracking().Include(o => o.Products).Include(o => o.Events)
                 .FirstOrDefaultAsync(o => o.OrderNo == id && o.UserId == userId);
         }
     }

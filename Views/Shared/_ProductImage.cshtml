@@ -1,16 +1,23 @@
 @model Product
-@if (Model.ImagePath != null)
-{
-    <img src="@ViewHelpers.ImageUrl(Model)" alt="@Model.Name" class="product-img @(Model.IsEbook ? "is-cover" : "")" loading="lazy" />
+@{
+    var url = ViewHelpers.ImageUrl(Model);
 }
-else if (Model.IsEbook)
+@if (url != null)
 {
-    <div class="book-cover" style="--cover: linear-gradient(160deg, @ViewHelpers.CoverGradient(Model.Name))" aria-label="Cover of @Model.Name">
+    <img src="@url" alt="@Model.Name" class="product-img @(Model.IsEbook ? "is-cover" : "")" loading="lazy" referrerpolicy="no-referrer"
+         onerror="this.hidden=true;this.nextElementSibling.hidden=false" />
+}
+@if (Model.IsEbook)
+{
+    <div class="book-cover" hidden="@(url != null)" style="--cover: linear-gradient(160deg, @ViewHelpers.CoverGradient(Model.Name))" aria-label="Cover of @Model.Name">
         <span class="book-title">@Model.Name</span>
         <span class="book-author">@Model.AuthorName</span>
     </div>
 }
 else
 {
-    <div class="product-placeholder type-@Model.Type.ToString().ToLowerInvariant()" aria-hidden="true"><i class="bi @ViewHelpers.CategoryIcon(Model.Category)"></i></div>
+    <div class="product-placeholder" hidden="@(url != null)" style="@ViewHelpers.PlaceholderStyle(Model.Category)" aria-hidden="true">
+        <i class="bi @ViewHelpers.CategoryIcon(Model.Category)"></i>
+        <span>@Model.Category</span>
+    </div>
 }

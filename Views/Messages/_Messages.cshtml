@@ -1,0 +1,16 @@
+@model Conversation
+@{
+    var userId = ViewData["UserId"] as string;
+}
+@if (Model.Messages.Count == 0)
+{
+    <div class="text-center text-secondary small py-4">Say hello! Ask about availability, sizes, delivery or anything else.</div>
+}
+@foreach (var m in Model.Messages)
+{
+    var mine = m.SenderId == userId;
+    <div class="bubble @(mine ? "mine" : "theirs")">
+        <div>@m.Body</div>
+        <small>@(mine ? "You" : (m.SenderId == Model.BuyerId ? "Customer" : Model.Seller?.SellerName ?? "Store support")) · @ViewHelpers.TimeAgo(m.CreatedAt)</small>
+    </div>
+}

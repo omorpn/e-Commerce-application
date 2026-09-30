@@ -18,6 +18,12 @@ namespace e_Commerce_application.Data
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<WishlistItem> WishlistItems => Set<WishlistItem>();
         public DbSet<FileBlob> FileBlobs => Set<FileBlob>();
+        public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
+        public DbSet<Coupon> Coupons => Set<Coupon>();
+        public DbSet<Notification> Notifications => Set<Notification>();
+        public DbSet<Conversation> Conversations => Set<Conversation>();
+        public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+        public DbSet<SiteSetting> SiteSettings => Set<SiteSetting>();
 
         // Sign-in encryption keys, so logins survive restarts on hosts without a disk.
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
@@ -39,7 +45,30 @@ namespace e_Commerce_application.Data
                 e.HasMany(o => o.Products).WithOne().HasForeignKey(i => i.OrderNo).OnDelete(DeleteBehavior.Cascade);
                 e.HasOne(o => o.User).WithMany().HasForeignKey(o => o.UserId).OnDelete(DeleteBehavior.SetNull);
                 e.HasIndex(o => o.UserId);
+                e.HasIndex(o => o.PaymentReference);
+                e.HasMany(o => o.Events).WithOne().HasForeignKey(ev => ev.OrderNo).OnDelete(DeleteBehavior.Cascade);
             });
+
+            builder.Entity<Coupon>(e => e.HasIndex(c => c.Code).IsUnique());
+
+            builder.Entity<Notification>(e =>
+            {
+                e.HasIndex(n => new { n.UserId, n.IsRead });
+                e.HasOne(n => n.User).WithMany().HasForeignKey(n => n.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Conversation>(e =>
+            {
+                e.HasIndex(c => new { c.BuyerId, c.SellerId, c.ProductCode });
+                e.HasIndex(c => c.SellerId);
+                e.HasOne(c => c.Buyer).WithMany().HasForeignKey(c => c.BuyerId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(c => c.Seller).WithMany().HasForeignKey(c => c.SellerId).OnDelete(DeleteBehavior.Cascade);
+                e.HasOne(c => c.Product).WithMany().HasForeignKey(c => c.ProductCode).OnDelete(DeleteBehavior.SetNull);
+                e.HasMany(c => c.Messages).WithOne().HasForeignKey(m => m.ConversationId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<ChatMessage>(e =>
+                e.HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId).OnDelete(DeleteBehavior.Cascade));
 
             builder.Entity<OrderItem>(e =>
             {

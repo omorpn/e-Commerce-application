@@ -22,7 +22,17 @@ namespace e_Commerce_application.Models
         Shipped = 2,
         Delivered = 3,
         Completed = 4,
-        Cancelled = 5
+        Cancelled = 5,
+        // Waiting for an online payment to be confirmed before the order is processed.
+        AwaitingPayment = 6
+    }
+
+    public enum PaymentStatus
+    {
+        Unpaid = 0,
+        Pending = 1,
+        Paid = 2,
+        Failed = 3
     }
 
     public enum ServiceLocation

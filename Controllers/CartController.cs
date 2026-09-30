@@ -12,15 +12,51 @@ namespace e_Commerce_application.Controllers
         private readonly CartService _cart;
         private readonly AppDbContext _db;
         private readonly UserManager<ApplicationUser> _users;
+        private readonly OrderService _orders;
 
-        public CartController(CartService cart, AppDbContext db, UserManager<ApplicationUser> users)
+        public CartController(CartService cart, AppDbContext db, UserManager<ApplicationUser> users, OrderService orders)
         {
             _cart = cart;
             _db = db;
             _users = users;
+            _orders = orders;
         }
 
-        public async Task<IActionResult> Index() => View(await _cart.BuildAsync(_users.GetUserId(User)));
+        public async Task<IActionResult> Index()
+        {
+            var cart = await _cart.BuildAsync(_users.GetUserId(User));
+            if (_cart.CouponCode != null && !cart.IsEmpty)
+            {
+                var coupon = await _orders.FindCouponAsync(_cart.CouponCode, cart.Subtotal);
+                cart.Coupon = coupon.Value;
+                cart.CouponError = coupon.Succeeded ? null : coupon.Errors[0];
+            }
+            return View(cart);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ApplyCoupon(string? code)
+        {
+            var cart = await _cart.BuildAsync(_users.GetUserId(User));
+            var coupon = await _orders.FindCouponAsync(code, cart.Subtotal);
+            if (coupon.Succeeded)
+            {
+                _cart.CouponCode = coupon.Value!.Code;
+                this.Success($"Coupon {coupon.Value.Code} applied: you save {ViewHelpers.Currency(coupon.Value.DiscountFor(cart.Subtotal))}.");
+            }
+            else
+            {
+                this.Error(coupon.Errors[0]);
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public IActionResult RemoveCoupon()
+        {
+            _cart.CouponCode = null;
+            return RedirectToAction(nameof(Index));
+        }
 
         [HttpPost]
         public async Task<IActionResult> Add(int productCode, int quantity = 1, bool buyNow = false, string? returnUrl = null)

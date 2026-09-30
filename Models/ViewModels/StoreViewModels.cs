@@ -35,6 +35,9 @@ namespace e_Commerce_application.Models.ViewModels
 
     public class HomeViewModel
     {
+        public List<ProductSummary> FlashSale { get; set; } = new();
+        public DateTime? FlashSaleEnds { get; set; }
+        public List<(string Category, ProductType Type, int Count)> TopCategories { get; set; } = new();
         public List<ProductSummary> Deals { get; set; } = new();
         public List<ProductSummary> Featured { get; set; } = new();
         public List<ProductSummary> Services { get; set; } = new();
@@ -96,6 +99,10 @@ namespace e_Commerce_application.Models.ViewModels
     public class CartViewModel
     {
         public List<CartLine> Lines { get; set; } = new();
+        public Coupon? Coupon { get; set; }
+        public string? CouponError { get; set; }
+        public decimal Discount => Coupon?.DiscountFor(Subtotal) ?? 0;
+        public bool HasDownloads => Lines.Any(l => l.Product.IsDownloadable);
         public int ItemCount => Lines.Sum(l => l.EffectiveQuantity);
         public decimal Subtotal => Lines.Where(l => l.Problem == null).Sum(l => l.LineTotal);
         public bool HasProblems => Lines.Any(l => l.Problem != null);
@@ -118,39 +125,45 @@ namespace e_Commerce_application.Models.ViewModels
 
     public class CheckoutViewModel
     {
-        public const string PayByCard = "Card (demo)";
-        public const string PayOnDelivery = "Pay on delivery";
-
         [Required, StringLength(100), Display(Name = "Full name")]
         public string FullName { get; set; } = string.Empty;
 
         [Required, EmailAddress, StringLength(256)]
         public string Email { get; set; } = string.Empty;
 
-        [Phone, StringLength(30)]
-        public string? Phone { get; set; }
+        [Required, Phone, StringLength(30), Display(Name = "Phone number")]
+        public string Phone { get; set; } = string.Empty;
 
-        [StringLength(200), Display(Name = "Address")]
+        [StringLength(200), Display(Name = "Street address")]
         public string? AddressLine { get; set; }
 
-        [StringLength(100)]
+        [StringLength(100), Display(Name = "City / Town")]
         public string? City { get; set; }
 
-        [StringLength(100), Display(Name = "State / Region")]
+        [StringLength(100)]
         public string? State { get; set; }
 
         [StringLength(20), Display(Name = "Postal code")]
         public string? PostalCode { get; set; }
 
         [StringLength(100)]
-        public string? Country { get; set; }
+        public string? Country { get; set; } = "Nigeria";
 
         [Required, Display(Name = "Payment method")]
-        public string PaymentMethod { get; set; } = PayByCard;
+        public string PaymentMethod { get; set; } = string.Empty;
 
         public List<ServiceBookingInput> Bookings { get; set; } = new();
 
         [ValidateNever]
         public CartViewModel Cart { get; set; } = new();
+
+        [ValidateNever]
+        public decimal ShippingFee { get; set; }
+
+        [ValidateNever]
+        public List<(string Value, string Label, string Help)> PaymentOptions { get; set; } = new();
+
+        [ValidateNever]
+        public decimal Total => Cart.Subtotal + ShippingFee - Cart.Discount;
     }
 }

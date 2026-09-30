@@ -1,0 +1,29 @@
+@model List<Conversation>
+@{
+    ViewData["Title"] = "Messages";
+    var userId = ViewData["UserId"] as string;
+}
+<h1 class="h3 mt-3">Messages</h1>
+<div class="panel p-0">
+    @if (Model.Count == 0)
+    {
+        <div class="text-center py-5 text-secondary">
+            <i class="bi bi-chat-dots display-6"></i>
+            <p class="mt-2">No conversations yet. Use <strong>Message the seller</strong> on any product page to ask a question.</p>
+        </div>
+    }
+    @foreach (var c in Model)
+    {
+        var iAmBuyer = c.BuyerId == userId;
+        var other = iAmBuyer ? (c.Seller?.SellerName ?? "Store support") : (c.Buyer?.DisplayName ?? c.Buyer?.Email ?? "Customer");
+        var unread = iAmBuyer ? c.BuyerUnread : c.SellerUnread;
+        <a class="notification @(unread ? "unread" : "")" asp-action="Thread" asp-route-id="@c.Id">
+            <i class="bi bi-person-circle"></i>
+            <span class="flex-grow-1">
+                <strong>@other</strong>
+                <span class="d-block small text-secondary">@(c.Product?.Name ?? "General question")</span>
+            </span>
+            <small class="text-secondary text-nowrap">@ViewHelpers.TimeAgo(c.UpdatedAt)</small>
+        </a>
+    }
+</div>

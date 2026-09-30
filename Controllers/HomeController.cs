@@ -19,9 +19,19 @@ namespace e_Commerce_application.Controllers
             var listed = _db.Products.AsNoTracking().Listed();
             IQueryable<Product> OfType(ProductType type) => listed.Where(p => p.Type == type);
 
+            var now = DateTime.UtcNow;
+            var flash = await listed.Deals().Where(p => p.DealEndsAt != null && p.DealEndsAt > now && (p.Type != ProductType.Physical || p.Stock > 0))
+                .OrderBy(p => p.DealEndsAt).ToSummaries().Take(12).ToListAsync();
+            var categories = await listed.GroupBy(p => new { p.Category, p.Type })
+                .Select(g => new { g.Key.Category, g.Key.Type, Count = g.Count() })
+                .OrderByDescending(g => g.Count).Take(16).ToListAsync();
+
             var model = new HomeViewModel
             {
-                Deals = await listed.Deals().Where(p => p.Type != ProductType.Physical || p.Stock > 0)
+                FlashSale = flash,
+                FlashSaleEnds = flash.Select(f => f.Product.DealEndsAt).Min(),
+                TopCategories = categories.Select(c => (c.Category, c.Type, c.Count)).ToList(),
+                Deals = await listed.Deals().Where(p => (p.DealEndsAt == null || p.DealEndsAt <= now) && (p.Type != ProductType.Physical || p.Stock > 0))
                     .OrderByDescending(p => (p.ListPrice! - p.Price) / p.ListPrice!).ToSummaries().Take(6).ToListAsync(),
                 Featured = await OfType(ProductType.Physical).Where(p => p.Stock > 0)
                     .OrderByDescending(p => p.Reviews.Count).ThenByDescending(p => p.PublishedAt).ToSummaries().Take(6).ToListAsync(),
@@ -48,6 +58,8 @@ namespace e_Commerce_application.Controllers
 
         public IActionResult Privacy() => View();
 
+        // Error pages can be re-executed from any failed request, including POSTs.
+        [IgnoreAntiforgeryToken]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
@@ -55,6 +67,7 @@ namespace e_Commerce_application.Controllers
             return View();
         }
 
+        [IgnoreAntiforgeryToken]
         [Route("Home/Status/{code:int}")]
         public IActionResult Status(int code)
         {

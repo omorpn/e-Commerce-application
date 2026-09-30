@@ -44,7 +44,7 @@ namespace e_Commerce_application.Controllers
                 .OrderByDescending(p => p.UpdatedAt).ToSummaries().ToListAsync();
             var sales = await (from item in _db.OrderItems
                                join order in _db.Orders on item.OrderNo equals order.OrderNo
-                               where item.SellerId == user.Id && order.Status != OrderStatus.Cancelled
+                               where item.SellerId == user.Id && order.Status != OrderStatus.Cancelled && order.Status != OrderStatus.AwaitingPayment
                                select new { item.ProductCode, item.ProductType, item.Quantity, item.Price, item.Fulfilled }).ToListAsync();
 
             var model = new SellerDashboardViewModel
@@ -269,7 +269,7 @@ namespace e_Commerce_application.Controllers
             var userId = _users.GetUserId(User);
             var query = from item in _db.OrderItems
                         join order in _db.Orders on item.OrderNo equals order.OrderNo
-                        where item.SellerId == userId && order.Status != OrderStatus.Cancelled
+                        where item.SellerId == userId && order.Status != OrderStatus.Cancelled && order.Status != OrderStatus.AwaitingPayment
                             && (item.ProductType == ProductType.Physical || item.ProductType == ProductType.Service)
                         select new SellerOrderRow { Item = item, Order = order };
             if (!all)

@@ -1,6 +1,8 @@
 @model CartViewModel
+@inject Microsoft.Extensions.Options.IOptions<ShippingOptions> ShippingSettings
 @{
     ViewData["Title"] = "Shopping Cart";
+    var freeOver = ShippingSettings.Value.FreeShippingOver;
 }
 <div class="row g-4 mt-1">
     <div class="col-lg-9">
@@ -81,21 +83,65 @@
     @if (!Model.IsEmpty)
     {
         <div class="col-lg-3">
-            <div class="panel">
-                @if (Model.Subtotal >= 25 && Model.HasPhysical)
+            <div class="panel order-summary">
+                @if (Model.HasPhysical && freeOver > 0)
                 {
-                    <div class="small text-success mb-2"><i class="bi bi-check-circle-fill"></i> Your order qualifies for FREE delivery.</div>
+                    if (Model.Subtotal >= freeOver)
+                    {
+                        <div class="small text-success mb-2"><i class="bi bi-check-circle-fill"></i> Your order qualifies for <strong>FREE delivery</strong>.</div>
+                    }
+                    else
+                    {
+                        <div class="small mb-1">Add <strong>@ViewHelpers.Currency(freeOver - Model.Subtotal)</strong> more for free delivery</div>
+                        <div class="progress mb-3" style="height: 6px" role="progressbar" aria-label="Progress to free delivery">
+                            <div class="progress-bar bg-success" style="width: @((int)Math.Min(100, Model.Subtotal / freeOver * 100))%"></div>
+                        </div>
+                    }
                 }
-                <div class="fs-5 mb-3">Subtotal (@Model.ItemCount item@(Model.ItemCount == 1 ? "" : "s")): <strong>@ViewHelpers.Currency(Model.Subtotal)</strong></div>
+                <div class="d-flex justify-content-between"><span>Subtotal (@Model.ItemCount item@(Model.ItemCount == 1 ? "" : "s"))</span><strong>@ViewHelpers.Currency(Model.Subtotal)</strong></div>
+                @if (Model.Coupon != null)
+                {
+                    <div class="d-flex justify-content-between text-success"><span>Coupon @Model.Coupon.Code</span><strong>-@ViewHelpers.Currency(Model.Discount)</strong></div>
+                }
+                @if (Model.HasPhysical)
+                {
+                    <div class="d-flex justify-content-between small text-secondary"><span>Delivery</span><span>At checkout</span></div>
+                }
+                <hr />
+                <div class="d-flex justify-content-between fs-5 mb-3"><span>Total</span><strong>@ViewHelpers.Currency(Model.Subtotal - Model.Discount)</strong></div>
                 @if (Model.HasProblems)
                 {
                     <div class="alert alert-warning small">Remove or fix the highlighted items to continue.</div>
-                    <button class="btn btn-buy w-100" disabled>Proceed to checkout</button>
+                    <button class="btn btn-buy w-100" disabled>Checkout</button>
                 }
                 else
                 {
-                    <a class="btn btn-buy w-100" asp-controller="Checkout" asp-action="Index" data-testid="checkout">Proceed to checkout</a>
+                    <a class="btn btn-buy w-100" asp-controller="Checkout" asp-action="Index" data-testid="checkout">Checkout (@ViewHelpers.Currency(Model.Subtotal - Model.Discount))</a>
                 }
+
+                <hr />
+                @if (Model.Coupon != null)
+                {
+                    <form asp-action="RemoveCoupon" method="post" class="small">
+                        <i class="bi bi-ticket-perforated text-success"></i> <strong>@Model.Coupon.Code</strong> applied
+                        <button class="btn btn-link btn-sm p-0 ms-1" type="submit">Remove</button>
+                    </form>
+                }
+                else
+                {
+                    <form asp-action="ApplyCoupon" method="post">
+                        <label class="small fw-semibold" for="coupon">Have a coupon?</label>
+                        <div class="input-group input-group-sm">
+                            <input id="coupon" name="code" class="form-control text-uppercase" placeholder="e.g. WELCOME10" maxlength="40" />
+                            <button class="btn btn-dark" type="submit" data-testid="apply-coupon">Apply</button>
+                        </div>
+                        @if (Model.CouponError != null)
+                        {
+                            <div class="small text-danger mt-1">@Model.CouponError</div>
+                        }
+                    </form>
+                }
+                <div class="small text-secondary mt-3"><i class="bi bi-shield-lock"></i> Secure checkout · <i class="bi bi-arrow-repeat"></i> Easy returns</div>
             </div>
         </div>
     }

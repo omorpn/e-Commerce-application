@@ -62,6 +62,38 @@ namespace e_Commerce_application.Models
         public string? PaymentMethod { get; set; }
 
         [BindNever]
+        public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
+
+        // Reference sent to the payment gateway (e.g. Paystack).
+        [BindNever]
+        [StringLength(100)]
+        public string? PaymentReference { get; set; }
+
+        [BindNever]
+        public DateTime? PaidAt { get; set; }
+
+        // Items total before delivery and discounts. InvoicePrice = Subtotal + ShippingFee - Discount.
+        [BindNever]
+        public decimal Subtotal { get; set; }
+
+        [BindNever]
+        public decimal ShippingFee { get; set; }
+
+        [BindNever]
+        public decimal Discount { get; set; }
+
+        [BindNever]
+        [StringLength(40)]
+        public string? CouponCode { get; set; }
+
+        [BindNever]
+        [StringLength(200)]
+        public string? TrackingNote { get; set; }
+
+        [BindNever]
+        public List<OrderEvent> Events { get; set; } = new();
+
+        [BindNever]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         public bool HasPhysicalItems => Products.Any(p => p.ProductType == ProductType.Physical);
